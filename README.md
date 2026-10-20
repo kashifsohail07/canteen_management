@@ -18,7 +18,7 @@ Alpine.js and Bootstrap 5. The UI is written in friendly Roman-Urdu/English.
 - **Audit trail** for balance adjustments, opening-balance changes, closing and reopening a day
 - **Dashboard activity feed** of everything done today, with "load more"
 - **Private bill photos** (compressed, stored on a private disk, only visible to logged-in users)
-- **Roles**: `admin` (settings, closing, reopening, balance corrections) and `staff` (daily entry)
+- **Roles**: `super_user` (full privileged field edit — settings, closing, reopening, balance corrections), `admin` (same elevated access), and `staff` (daily entry)
 - **Reports**: daily, monthly and per-vendor
 - **PWA**: installable, offline fallback page
 
@@ -91,10 +91,11 @@ The timezone defaults to `Asia/Karachi` (`APP_TIMEZONE`); the business date of e
 
 ## Default logins
 
-| Role  | Email                | Password   |
-|-------|----------------------|------------|
-| Admin | `admin@canteen.local` | `password` |
-| Staff | `staff@canteen.local` | `password` |
+| Role       | Email                  | Password   |
+|------------|------------------------|------------|
+| Super User | `super@canteen.local`  | `password` |
+| Admin      | `admin@canteen.local`  | `password` |
+| Staff      | `staff@canteen.local`  | `password` |
 
 **Change both passwords before using the app with real data.**
 

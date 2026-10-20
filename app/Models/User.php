@@ -52,9 +52,15 @@ class User extends Authenticatable
         ];
     }
 
+    public function isSuperUser(): bool
+    {
+        return $this->role === UserRole::SuperUser;
+    }
+
+    /** True for Super User and Admin — full privileged field-edit access. */
     public function isAdmin(): bool
     {
-        return $this->role === UserRole::Admin;
+        return $this->role->isElevated();
     }
 
     public function isStaff(): bool

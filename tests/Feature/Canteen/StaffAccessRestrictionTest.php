@@ -4,6 +4,7 @@ namespace Tests\Feature\Canteen;
 
 use App\Models\AuditLog;
 use App\Models\DailySession;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\SeedsCanteenBasics;
 use Tests\TestCase;
@@ -32,6 +33,30 @@ class StaffAccessRestrictionTest extends TestCase
     public function test_admin_can_open_settings(): void
     {
         $this->actingAs($this->admin)->get('/settings')->assertOk();
+    }
+
+    public function test_super_user_has_full_privileged_edit_access(): void
+    {
+        $super = User::factory()->superUser()->create([
+            'email' => 'super@canteen.local',
+            'name' => 'Super User',
+        ]);
+        $vendor = $this->makeVendor('Biscuits', 5000);
+
+        $this->assertTrue($super->isSuperUser());
+        $this->assertTrue($super->isAdmin());
+
+        $this->actingAs($super)->get('/settings')->assertOk();
+        $this->actingAs($super)->get('/segments')->assertOk();
+        $this->actingAs($super)->get('/setup/vendors')->assertOk();
+
+        $this->actingAs($super)->post("/vendors/{$vendor->id}/adjust-balance", [
+            'new_balance' => '4000',
+            'reason' => 'Super user correction',
+        ])->assertRedirect();
+
+        $vendor->refresh();
+        $this->assertMoney(4000, $vendor->current_balance);
     }
 
     public function test_staff_cannot_reopen_a_closed_day(): void

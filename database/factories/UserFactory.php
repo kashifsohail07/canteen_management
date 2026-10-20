@@ -36,6 +36,11 @@ class UserFactory extends Factory
         ];
     }
 
+    public function superUser(): static
+    {
+        return $this->state(fn (array $attributes) => ['role' => UserRole::SuperUser]);
+    }
+
     public function admin(): static
     {
         return $this->state(fn (array $attributes) => ['role' => UserRole::Admin]);

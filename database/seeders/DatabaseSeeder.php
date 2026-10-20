@@ -24,6 +24,11 @@ class DatabaseSeeder extends Seeder
         );
 
         User::updateOrCreate(
+            ['email' => 'super@canteen.local'],
+            ['name' => 'Super User', 'password' => 'password', 'role' => UserRole::SuperUser, 'is_active' => true, 'email_verified_at' => now()],
+        );
+
+        User::updateOrCreate(
             ['email' => 'staff@canteen.local'],
             ['name' => 'Staff', 'password' => 'password', 'role' => UserRole::Staff, 'is_active' => true, 'email_verified_at' => now()],
         );
