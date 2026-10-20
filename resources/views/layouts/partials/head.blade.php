@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Canteen Hisab">
 <title>@yield('title', 'Home') · Canteen Hisab</title>
+<style>[x-cloak]{display:none!important}</style>
 <link rel="manifest" href="{{ asset('manifest.json') }}">
 <link rel="icon" type="image/svg+xml" href="{{ asset('icons/icon.svg') }}">
 <link rel="apple-touch-icon" href="{{ asset('icons/apple-touch-icon.png') }}">
