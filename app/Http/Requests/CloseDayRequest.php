@@ -25,6 +25,9 @@ class CloseDayRequest extends FormRequest
             'business_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'actual_counted_cash' => $this->amountRules(false),
             'difference_reason' => ['nullable', 'string', 'max:500'],
+            'segment_reasons' => ['nullable', 'array'],
+            'segment_reasons.*' => ['nullable', 'string', 'max:500'],
+            'rent_reason' => ['nullable', 'string', 'max:500'],
             'idempotency_key' => ['nullable', 'string', 'max:100'],
         ];
     }
@@ -34,6 +37,15 @@ class CloseDayRequest extends FormRequest
         return [
             'actual_counted_cash.required' => 'Ginti ka cash likhein.',
             'actual_counted_cash.numeric' => 'Cash sirf number hona chahiye.',
+        ];
+    }
+
+    /** @return array{segment_reasons: array<int|string, string>, rent_reason: ?string} */
+    public function checklistInput(): array
+    {
+        return [
+            'segment_reasons' => $this->validated('segment_reasons') ?? [],
+            'rent_reason' => $this->validated('rent_reason'),
         ];
     }
 }

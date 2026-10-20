@@ -27,9 +27,14 @@ class ClosingController extends Controller
         $date = $this->requestedDate($request);
         $session = $this->sessionForView($date, $request->user()) ?? abort(404, 'Is din ka koi record nahi.');
 
+        $checklist = $session->isOpen()
+            ? $this->closing->checklistGaps($session)
+            : ['segments' => [], 'rent_missing' => false, 'daily_rent_suggest' => '0'];
+
         return view('closing.show', [
             'session' => $session,
             'summary' => $this->closing->summarize($session),
+            'checklist' => $checklist,
             'date' => $date,
             'topDate' => $date,
             'canClose' => $request->user()->can('close', $session),
@@ -53,6 +58,7 @@ class ClosingController extends Controller
             $request->validated('actual_counted_cash'),
             $request->validated('difference_reason'),
             $request->user(),
+            $request->checklistInput(),
         );
 
         return redirect()

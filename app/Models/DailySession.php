@@ -13,7 +13,7 @@ class DailySession extends Model
     protected $fillable = [
         'business_date', 'day_type', 'status', 'opening_canteen_cash', 'opening_rent_reserve',
         'opening_owner_recoverable', 'expected_closing_cash', 'actual_counted_cash',
-        'cash_difference', 'difference_reason', 'closed_at', 'closed_by', 'notes', 'created_by',
+        'cash_difference', 'difference_reason', 'close_checklist', 'closed_at', 'closed_by', 'notes', 'created_by',
     ];
 
     protected function casts(): array
@@ -28,6 +28,7 @@ class DailySession extends Model
             'expected_closing_cash' => 'decimal:2',
             'actual_counted_cash' => 'decimal:2',
             'cash_difference' => 'decimal:2',
+            'close_checklist' => 'array',
             'closed_at' => 'datetime',
         ];
     }

@@ -111,4 +111,27 @@ trait SeedsCanteenBasics
     {
         $this->assertSame(Money::of($expected), Money::of($actual), $message);
     }
+
+    /**
+     * Payload for POST /closing — fills reasons for empty sale segments + missing rent
+     * so day-close checklist validation passes in tests.
+     *
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    protected function closeDayPayload(string|int|float $actualCash, ?string $date = null, array $extra = []): array
+    {
+        $payload = array_merge([
+            'business_date' => $date ?? now()->toDateString(),
+            'actual_counted_cash' => (string) $actualCash,
+            'rent_reason' => 'Test rent skip',
+            'segment_reasons' => [],
+        ], $extra);
+
+        foreach (SaleSegment::where('is_active', true)->pluck('id') as $id) {
+            $payload['segment_reasons'][$id] ??= 'Test: no sale in segment';
+        }
+
+        return $payload;
+    }
 }

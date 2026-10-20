@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreSaleSegmentRequest;
+use App\Http\Requests\UpdateDailyRentRequest;
 use App\Http\Requests\UpdateSaleSegmentRequest;
 use App\Models\SaleSegment;
 use App\Services\AuditService;
+use App\Services\SettingService;
+use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,13 +17,40 @@ use Illuminate\View\View;
 
 class SaleSegmentController extends Controller
 {
-    public function __construct(private AuditService $audit) {}
+    public function __construct(
+        private AuditService $audit,
+        private SettingService $settings,
+    ) {}
 
     public function index(): View
     {
         return view('segments.index', [
             'segments' => SaleSegment::orderBy('sort_order')->orderBy('id')->get(),
+            'dailyRentSuggest' => $this->settings->getDecimal('daily_rent_suggest', 5000),
+            'monthlyRentTarget' => $this->settings->getDecimal('monthly_rent_target', 71000),
         ]);
+    }
+
+    /** Admin: control daily Rent Side amount from the Segments screen. */
+    public function updateRent(UpdateDailyRentRequest $request): RedirectResponse
+    {
+        $old = $this->settings->getDecimal('daily_rent_suggest', 5000);
+        $new = Money::of($request->validated('daily_rent_suggest'));
+        $setting = $this->settings->set('daily_rent_suggest', $new);
+
+        if ($old !== $new) {
+            $this->audit->log(
+                'settings.daily_rent_suggest',
+                $setting,
+                ['daily_rent_suggest' => $old],
+                ['daily_rent_suggest' => $new],
+                null,
+                $request->user(),
+            );
+        }
+
+        return redirect()->route('segments.index')
+            ->with('success', 'Roz ka Rent Side: '.Money::format($new));
     }
 
     public function store(StoreSaleSegmentRequest $request): RedirectResponse

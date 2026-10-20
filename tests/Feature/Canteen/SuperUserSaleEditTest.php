@@ -157,10 +157,7 @@ class SuperUserSaleEditTest extends TestCase
         $sale = $this->postSale('100');
         $today = now()->toDateString();
 
-        $this->actingAs($this->admin)->post('/closing', [
-            'business_date' => $today,
-            'actual_counted_cash' => '100',
-        ])->assertRedirect();
+        $this->actingAs($this->admin)->post('/closing', $this->closeDayPayload('100', $today))->assertRedirect();
 
         $this->actingAs($this->super)->put(route('sales.update', $sale), [
             'sale_segment_id' => $sale->sale_segment_id,

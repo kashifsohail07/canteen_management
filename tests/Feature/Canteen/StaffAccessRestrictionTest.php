@@ -63,7 +63,7 @@ class StaffAccessRestrictionTest extends TestCase
     {
         $this->actingAs($this->admin)->post('/sales', ['sale_segment_id' => $this->segment()->id, 'amount' => '100'])->assertRedirect();
         $today = now()->toDateString();
-        $this->actingAs($this->admin)->post('/closing', ['business_date' => $today, 'actual_counted_cash' => '100'])->assertRedirect();
+        $this->actingAs($this->admin)->post('/closing', $this->closeDayPayload('100', $today))->assertRedirect();
 
         $this->actingAs($this->staff)->post('/closing/reopen', ['business_date' => $today, 'reason' => 'please'])->assertForbidden();
 

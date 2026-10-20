@@ -62,7 +62,7 @@ class HomepageActivityTest extends TestCase
         $segment = $this->segment();
         $this->travelTo(now()->subDay()->setTime(10, 0));
         $this->actingAs($this->admin)->post('/sales', ['sale_segment_id' => $segment->id, 'amount' => '100'])->assertRedirect();
-        $this->actingAs($this->admin)->post('/closing', ['business_date' => now()->toDateString(), 'actual_counted_cash' => '100'])->assertRedirect();
+        $this->actingAs($this->admin)->post('/closing', $this->closeDayPayload('100', now()->toDateString()))->assertRedirect();
 
         $this->travelBack();
         $this->actingAs($this->staff)->post('/sales', ['sale_segment_id' => $segment->id, 'amount' => '250'])->assertRedirect();

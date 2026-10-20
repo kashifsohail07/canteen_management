@@ -27,16 +27,12 @@ class CarryForwardClosingCashTest extends TestCase
         $today = now()->toDateString();
 
         // expected 5,000 but only 4,900 counted: difference needs a reason
-        $this->actingAs($this->admin)->post('/closing', [
-            'business_date' => $today,
-            'actual_counted_cash' => '4900',
-        ])->assertSessionHasErrors('difference_reason');
+        $this->actingAs($this->admin)->post('/closing', $this->closeDayPayload('4900', $today))
+            ->assertSessionHasErrors('difference_reason');
 
-        $this->actingAs($this->admin)->post('/closing', [
-            'business_date' => $today,
-            'actual_counted_cash' => '4900',
+        $this->actingAs($this->admin)->post('/closing', $this->closeDayPayload('4900', $today, [
             'difference_reason' => 'Rs. 100 given as change to a teacher',
-        ])->assertRedirect(route('closing.show', ['date' => $today]));
+        ]))->assertRedirect(route('closing.show', ['date' => $today]));
 
         $closed = DailySession::whereDate('business_date', $today)->sole();
         $this->assertSame(DailySessionStatus::Closed, $closed->status);
@@ -59,10 +55,7 @@ class CarryForwardClosingCashTest extends TestCase
     {
         $this->actingAs($this->admin)->post('/sales', ['sale_segment_id' => $this->segment()->id, 'amount' => '700'])->assertRedirect();
 
-        $this->actingAs($this->admin)->post('/closing', [
-            'business_date' => now()->toDateString(),
-            'actual_counted_cash' => '700',
-        ])->assertRedirect();
+        $this->actingAs($this->admin)->post('/closing', $this->closeDayPayload('700'))->assertRedirect();
 
         $session = DailySession::sole();
         $this->assertMoney(0, $session->cash_difference);
@@ -73,10 +66,7 @@ class CarryForwardClosingCashTest extends TestCase
     {
         $segment = $this->segment();
         $this->actingAs($this->admin)->post('/sales', ['sale_segment_id' => $segment->id, 'amount' => '700'])->assertRedirect();
-        $this->actingAs($this->admin)->post('/closing', [
-            'business_date' => now()->toDateString(),
-            'actual_counted_cash' => '700',
-        ])->assertRedirect();
+        $this->actingAs($this->admin)->post('/closing', $this->closeDayPayload('700'))->assertRedirect();
 
         $this->actingAs($this->staff)->post('/sales', ['sale_segment_id' => $segment->id, 'amount' => '50'])
             ->assertSessionHasErrors('business_date');
@@ -88,11 +78,9 @@ class CarryForwardClosingCashTest extends TestCase
     {
         $this->actingAs($this->admin)->post('/sales', ['sale_segment_id' => $this->segment()->id, 'amount' => '1000'])->assertRedirect();
         $today = now()->toDateString();
-        $this->actingAs($this->admin)->post('/closing', [
-            'business_date' => $today,
-            'actual_counted_cash' => '950',
+        $this->actingAs($this->admin)->post('/closing', $this->closeDayPayload('950', $today, [
             'difference_reason' => 'Short',
-        ])->assertRedirect();
+        ]))->assertRedirect();
         $this->assertMoney(950, $this->canteenCash());
 
         $this->actingAs($this->admin)->post('/closing/reopen', ['business_date' => $today, 'reason' => 'Forgot an entry'])

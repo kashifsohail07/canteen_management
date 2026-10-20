@@ -79,7 +79,7 @@
         <a class="sheet-link" href="{{ route('closing.show') }}"><i class="bi bi-lock-fill"></i>Din Close</a>
         <a class="sheet-link" href="{{ route('reports.index') }}"><i class="bi bi-file-earmark-bar-graph-fill"></i>Reports</a>
         @if ($user->isAdmin())
-            <a class="sheet-link" href="{{ route('segments.index') }}"><i class="bi bi-ui-checks-grid"></i>Segments</a>
+            <a class="sheet-link" href="{{ route('segments.index') }}"><i class="bi bi-ui-checks-grid"></i>Segments &amp; Rent</a>
             <a class="sheet-link" href="{{ route('settings.edit') }}"><i class="bi bi-gear-fill"></i>Settings</a>
             <a class="sheet-link" href="{{ route('setup.vendors') }}"><i class="bi bi-magic"></i>Vendor Setup</a>
         @endif

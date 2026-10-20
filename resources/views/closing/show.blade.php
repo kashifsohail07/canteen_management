@@ -49,6 +49,22 @@
     <div class="flash flash-error"><i class="bi bi-exclamation-triangle-fill"></i><div><b>Farq ki wajah:</b> {{ $s['difference_reason'] }}</div></div>
 @endif
 
+@if ($closed && ! empty($session->close_checklist))
+    @php $cl = $session->close_checklist; @endphp
+    @if (! empty($cl['segments']) || ! empty($cl['rent']))
+        <div class="card-x">
+            <div class="card-title">Close checklist (wajah)</div>
+            @foreach (($cl['segments'] ?? []) as $segId => $why)
+                @php $segName = \App\Models\SaleSegment::find($segId)?->name ?? ('Segment #'.$segId); @endphp
+                <div class="kv"><span>{{ $segName }}</span><span class="small">{{ $why }}</span></div>
+            @endforeach
+            @if (! empty($cl['rent']))
+                <div class="kv"><span>Rent Side</span><span class="small">{{ $cl['rent'] }}</span></div>
+            @endif
+        </div>
+    @endif
+@endif
+
 {{-- cash movement --}}
 <div class="card-x">
     <div class="card-title">Cash Hisab</div>
@@ -106,6 +122,50 @@
             <input type="hidden" name="business_date" value="{{ $date->toDateString() }}">
 
             <div class="divider-label">Din Close Karein</div>
+
+            @php
+                $gaps = $checklist ?? ['segments' => [], 'rent_missing' => false];
+                $hasGaps = ! empty($gaps['segments']) || ! empty($gaps['rent_missing']);
+            @endphp
+
+            @if ($hasGaps)
+                <div class="card-x mb-3">
+                    <div class="card-title"><i class="bi bi-exclamation-circle text-warning"></i> Khali fields — wajah zaroori</div>
+                    <div class="field-hint mb-3">Jin segments / Rent Side pe aaj value nahi, unki wajah likhein — tabhi din close hoga.</div>
+
+                    @foreach ($gaps['segments'] as $gap)
+                        <div class="field">
+                            <label for="seg_reason_{{ $gap['segment_id'] }}">
+                                Sale – {{ $gap['name'] }} <span class="badge-soft red">Rs. 0</span>
+                            </label>
+                            <input type="text" id="seg_reason_{{ $gap['segment_id'] }}"
+                                   name="segment_reasons[{{ $gap['segment_id'] }}]"
+                                   class="form-control-x" maxlength="500" required
+                                   value="{{ old('segment_reasons.'.$gap['segment_id']) }}"
+                                   placeholder="Kyun sale nahi? jaise: holiday, school band">
+                            @error('segment_reasons.'.$gap['segment_id'])
+                                <div class="field-error">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    @endforeach
+
+                    @if ($gaps['rent_missing'])
+                        <div class="field">
+                            <label for="rent_reason">
+                                Rent Side <span class="badge-soft red">nahi rakha</span>
+                                <small class="text-muted">(suggest {{ Money::format($gaps['daily_rent_suggest'] ?? 0) }})</small>
+                            </label>
+                            <input type="text" id="rent_reason" name="rent_reason" class="form-control-x"
+                                   maxlength="500" required value="{{ old('rent_reason') }}"
+                                   placeholder="Kyun skip? jaise: sale kam thi">
+                            @error('rent_reason')<div class="field-error">{{ $message }}</div>@enderror
+                            <div class="field-hint">
+                                Pehle <a href="{{ route('rent.create', ['date' => $date->toDateString()]) }}">Rent Side</a> rakh sakte hain, ya yahan wajah likh kar close karein.
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            @endif
 
             <x-money-input name="actual_counted_cash" id="actual_counted_cash" label="Gallay Mein Asal Cash (Ginti)" x-model="counted"
                            hint="Cash gin kar likhein. Expected: {{ Money::format($s['expected_closing_cash']) }}" />

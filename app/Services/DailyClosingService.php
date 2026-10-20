@@ -14,6 +14,7 @@ use App\Models\Purchase;
 use App\Models\RentPayment;
 use App\Models\RentReservation;
 use App\Models\Sale;
+use App\Models\SaleSegment;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Models\VendorPayment;
@@ -30,7 +31,95 @@ class DailyClosingService
         private CashLedgerService $cash,
         private ActivityLogService $activity,
         private AuditService $audit,
+        private SettingService $settings,
     ) {}
+
+    /**
+     * Empty sale segments + missing rent that need a reason before the day can close.
+     *
+     * @return array{
+     *   segments: list<array{segment_id: int, name: string}>,
+     *   rent_missing: bool,
+     *   daily_rent_suggest: string
+     * }
+     */
+    public function checklistGaps(DailySession $session): array
+    {
+        $salesBySegment = Sale::where('daily_session_id', $session->id)
+            ->where('is_reversed', false)
+            ->get(['sale_segment_id', 'amount'])
+            ->groupBy('sale_segment_id');
+
+        $emptySegments = [];
+        foreach (SaleSegment::where('is_active', true)->orderBy('sort_order')->orderBy('id')->get() as $segment) {
+            $total = Money::zero();
+            foreach ($salesBySegment->get($segment->id, collect()) as $row) {
+                $total = Money::add($total, $row->amount);
+            }
+            if (Money::isZero($total)) {
+                $emptySegments[] = [
+                    'segment_id' => $segment->id,
+                    'name' => $segment->name,
+                ];
+            }
+        }
+
+        $rentReserved = $this->sum(
+            RentReservation::where('daily_session_id', $session->id)->where('is_reversed', false)->get(['amount']),
+            'amount',
+        );
+        $rentSkipped = ActivityLog::where('daily_session_id', $session->id)
+            ->where('activity_type', 'rent_skip')
+            ->exists();
+
+        return [
+            'segments' => $emptySegments,
+            'rent_missing' => Money::isZero($rentReserved) && ! $rentSkipped,
+            'daily_rent_suggest' => $this->settings->getDecimal('daily_rent_suggest', 5000),
+        ];
+    }
+
+    /**
+     * Validate + normalise close checklist reasons for empty segments / missing rent.
+     *
+     * @param  array{segment_reasons?: array<int|string, string>, rent_reason?: ?string}  $input
+     * @return array{segments: array<string, string>, rent: ?string}
+     */
+    public function validateChecklist(DailySession $session, array $input): array
+    {
+        $gaps = $this->checklistGaps($session);
+        $errors = [];
+        $segmentReasons = [];
+
+        foreach ($gaps['segments'] as $gap) {
+            $id = (string) $gap['segment_id'];
+            $reason = trim((string) ($input['segment_reasons'][$gap['segment_id']]
+                ?? $input['segment_reasons'][$id]
+                ?? ''));
+            if (strlen($reason) < 3) {
+                $errors["segment_reasons.{$id}"] = "\"{$gap['name']}\" ki sale nahi — wajah likhein (kam az kam 3 characters).";
+            } else {
+                $segmentReasons[$id] = $reason;
+            }
+        }
+
+        $rentReason = null;
+        if ($gaps['rent_missing']) {
+            $rentReason = trim((string) ($input['rent_reason'] ?? ''));
+            if (strlen($rentReason) < 3) {
+                $errors['rent_reason'] = 'Rent Side aaj nahi rakha — wajah likhein, ya pehle Rent Side / Skip karein.';
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return [
+            'segments' => $segmentReasons,
+            'rent' => $rentReason,
+        ];
+    }
 
     /**
      * End-of-day numbers for a session. Expected closing cash is derived from the day's canteen cash
@@ -113,21 +202,48 @@ class DailyClosingService
     }
 
     /**
-     * Close the day: record counted cash, require a reason when it doesn't match, post an adjustment so the
-     * canteen cash account equals the counted cash, and lock the session.
+     * Close the day: empty sale segments / missing rent need reasons; counted cash mismatch needs a reason;
+     * then post an adjustment so canteen cash equals counted cash and lock the session.
+     *
+     * @param  array{segment_reasons?: array<int|string, string>, rent_reason?: ?string}  $checklistInput
      */
-    public function close(DailySession $session, string|int|float $actualCash, ?string $reason, User $user): DailySession
-    {
+    public function close(
+        DailySession $session,
+        string|int|float $actualCash,
+        ?string $reason,
+        User $user,
+        array $checklistInput = [],
+    ): DailySession {
         $actual = Money::of($actualCash);
         if (Money::isNegative($actual)) {
             throw ValidationException::withMessages(['actual_counted_cash' => 'Counted cash cannot be negative.']);
         }
         $reason = $reason !== null ? trim($reason) : null;
+        $checklist = $this->validateChecklist($session, $checklistInput);
 
-        return DB::transaction(function () use ($session, $actual, $reason, $user) {
+        return DB::transaction(function () use ($session, $actual, $reason, $user, $checklist) {
             $locked = DailySession::whereKey($session->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== DailySessionStatus::Open) {
                 throw ValidationException::withMessages(['business_date' => 'This day is already closed.']);
+            }
+
+            // Re-check gaps under lock (entries may have changed).
+            $checklist = $this->validateChecklist($locked, [
+                'segment_reasons' => $checklist['segments'],
+                'rent_reason' => $checklist['rent'],
+            ]);
+
+            if ($checklist['rent'] !== null) {
+                $alreadySkipped = ActivityLog::where('daily_session_id', $locked->id)
+                    ->where('activity_type', 'rent_skip')
+                    ->exists();
+                if (! $alreadySkipped) {
+                    $this->activity->log(
+                        $locked, 'rent_skip', 'Rent reserve skipped', $checklist['rent'],
+                        null, null, ActivityColor::Blue, null, null, false,
+                        ['via' => 'day_close'], $user,
+                    );
+                }
             }
 
             $account = $this->cash->getAccount(CashAccountCode::CanteenCash); // lock
@@ -165,6 +281,7 @@ class DailyClosingService
                 'actual_counted_cash' => $actual,
                 'cash_difference' => $difference,
                 'difference_reason' => Money::isZero($difference) ? null : $reason,
+                'close_checklist' => $checklist,
                 'closed_at' => now(),
                 'closed_by' => $user->id,
             ]);
@@ -177,7 +294,11 @@ class DailyClosingService
                 $actual, $difference,
                 Money::isZero($difference) ? ActivityColor::Green : ActivityColor::Orange,
                 null, $locked, false,
-                ['rent_reserve' => $balances[CashAccountCode::RentReserve->value], 'owner_recoverable' => $balances[CashAccountCode::OwnerRecoverable->value]],
+                [
+                    'rent_reserve' => $balances[CashAccountCode::RentReserve->value],
+                    'owner_recoverable' => $balances[CashAccountCode::OwnerRecoverable->value],
+                    'checklist' => $checklist,
+                ],
                 $user,
             );
 
@@ -186,6 +307,7 @@ class DailyClosingService
                 'expected_closing_cash' => $expected,
                 'actual_counted_cash' => $actual,
                 'cash_difference' => $difference,
+                'close_checklist' => $checklist,
             ], $reason, $user);
 
             return $locked->refresh();
@@ -250,6 +372,7 @@ class DailyClosingService
                 'actual_counted_cash' => null,
                 'cash_difference' => null,
                 'difference_reason' => null,
+                'close_checklist' => null,
                 'closed_at' => null,
                 'closed_by' => null,
             ]);
