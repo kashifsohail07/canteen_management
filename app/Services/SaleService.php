@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ActivityColor;
 use App\Enums\CashAccountCode;
 use App\Models\ActivityLog;
+use App\Models\RentReservation;
 use App\Models\Sale;
 use App\Models\SaleSegment;
 use App\Models\User;
@@ -20,11 +21,12 @@ class SaleService
         private CashLedgerService $cash,
         private ActivityLogService $activity,
         private AuditService $audit,
+        private RentService $rent,
     ) {}
 
     /**
      * $data keys: sale_segment_id, amount, payment_method ('cash' default), notes, business_date, idempotency_key.
-     * Cash sales are credited to canteen cash; other methods are recorded without cash movement.
+     * Normal segments credit canteen cash. Rent Side segment moves cash into rent reserve (like First Break UX).
      */
     public function record(array $data, User $user): Sale
     {
@@ -41,6 +43,10 @@ class SaleService
         $segment = SaleSegment::where('is_active', true)->find($data['sale_segment_id'] ?? 0);
         if (! $segment) {
             throw ValidationException::withMessages(['sale_segment_id' => 'Choose a valid sale segment.']);
+        }
+
+        if ($segment->isRentSide()) {
+            return $this->recordRentSide($data, $user, $amount, $segment);
         }
 
         $method = strtolower((string) ($data['payment_method'] ?? 'cash')) ?: 'cash';
@@ -76,6 +82,60 @@ class SaleService
                 $amount, null, ActivityColor::Green, null, $sale, false,
                 ['segment' => $segment->slug, 'payment_method' => $method], $user, $now,
             );
+
+            return $sale->refresh()->load('segment');
+        });
+    }
+
+    /** Rent Side pill: same Add Sale UX, money goes canteen_cash → rent_reserve. */
+    private function recordRentSide(array $data, User $user, string $amount, SaleSegment $segment): Sale
+    {
+        return DB::transaction(function () use ($data, $user, $amount, $segment) {
+            $session = $this->sessions->openSessionFor($data['business_date'] ?? null, $user);
+            $now = now();
+
+            $sale = Sale::create([
+                'daily_session_id' => $session->id,
+                'sale_segment_id' => $segment->id,
+                'amount' => $amount,
+                'payment_method' => 'rent_side',
+                'notes' => $data['notes'] ?? null,
+                'recorded_at' => $now,
+                'created_by' => $user->id,
+                'idempotency_key' => $data['idempotency_key'] ?? null,
+            ]);
+
+            $reservation = $this->rent->reserve([
+                'amount' => $amount,
+                'notes' => $data['notes'] ?? ('Via Add Sale – '.$segment->name),
+                'business_date' => $data['business_date'] ?? $session->business_date->toDateString(),
+                'idempotency_key' => ! empty($data['idempotency_key'])
+                    ? $data['idempotency_key'].':rent'
+                    : null,
+                'sale_id' => $sale->id,
+            ], $user);
+
+            // Point the feed entry at the sale so tapping opens the same detail/edit flow.
+            $feed = ActivityLog::query()
+                ->where('reference_type', 'rent_reservation')
+                ->where('reference_id', $reservation->id)
+                ->first();
+
+            if ($feed) {
+                $feed->update([
+                    'activity_type' => 'rent_reserve',
+                    'title' => $segment->name,
+                    'summary' => 'Rent side rakha (Add Sale)',
+                    'color' => ActivityColor::Blue,
+                    'reference_type' => 'sale',
+                    'reference_id' => $sale->id,
+                    'meta' => [
+                        'segment' => $segment->slug,
+                        'payment_method' => 'rent_side',
+                        'rent_reservation_id' => $reservation->id,
+                    ],
+                ]);
+            }
 
             return $sale->refresh()->load('segment');
         });
@@ -120,6 +180,18 @@ class SaleService
             throw ValidationException::withMessages(['reason' => 'Edit ki wajah likhna zaroori hai.']);
         }
 
+        // Keep rent-side edits on the rent segment (switching kind is a bigger rewrite).
+        if ($sale->segment?->isRentSide() && ! $segment->isRentSide()) {
+            throw ValidationException::withMessages([
+                'sale_segment_id' => 'Rent Side entry ko doosre segment mein nahi badal sakte.',
+            ]);
+        }
+        if (! $sale->segment?->isRentSide() && $segment->isRentSide()) {
+            throw ValidationException::withMessages([
+                'sale_segment_id' => 'Sale ko Rent Side mein convert nahi kar sakte — nayi Rent Side entry karein.',
+            ]);
+        }
+
         return DB::transaction(function () use ($sale, $data, $user, $amount, $segment, $reason) {
             $locked = Sale::whereKey($sale->id)->lockForUpdate()->firstOrFail();
             $locked->load('dailySession', 'segment');
@@ -140,7 +212,9 @@ class SaleService
             $oldAmount = Money::of($locked->amount);
             $diff = Money::sub($amount, $oldAmount);
 
-            if ($method === 'cash' && ! Money::isZero($diff)) {
+            if ($method === 'rent_side' && ! Money::isZero($diff)) {
+                $this->adjustRentSideCash($locked, $diff, $reason, $user);
+            } elseif ($method === 'cash' && ! Money::isZero($diff)) {
                 $ctx = [
                     'session' => $locked->dailySession,
                     'reference' => $locked,
@@ -160,11 +234,22 @@ class SaleService
                 'notes' => $data['notes'] ?? null,
             ]);
 
+            if ($method === 'rent_side') {
+                RentReservation::query()
+                    ->where('sale_id', $locked->id)
+                    ->where('is_reversed', false)
+                    ->update(['amount' => $amount, 'notes' => $data['notes'] ?? null]);
+            }
+
             $summary = Money::isZero($amount)
                 ? 'Ghalti se entry — amount zero'
-                : ($method === 'cash'
-                    ? 'Cash sale'
-                    : ucfirst($method).' sale (no cash movement)');
+                : ($method === 'rent_side'
+                    ? 'Rent side rakha (Add Sale)'
+                    : ($method === 'cash'
+                        ? 'Cash sale'
+                        : ucfirst($method).' sale (no cash movement)'));
+
+            $title = $method === 'rent_side' ? $segment->name : 'Sale – '.$segment->name;
 
             $feed = ActivityLog::query()
                 ->where('reference_type', 'sale')
@@ -173,7 +258,7 @@ class SaleService
 
             if ($feed) {
                 $feed->update([
-                    'title' => 'Sale – '.$segment->name,
+                    'title' => $title,
                     'summary' => $summary,
                     'amount' => $amount,
                     'meta' => ['segment' => $segment->slug, 'payment_method' => $method, 'edited' => true],
@@ -190,5 +275,28 @@ class SaleService
 
             return $locked->refresh()->load('segment');
         });
+    }
+
+    /** Move the rent-side difference between canteen cash and rent reserve. */
+    private function adjustRentSideCash(Sale $sale, string $diff, string $reason, User $user): void
+    {
+        $ctx = [
+            'session' => $sale->dailySession,
+            'reference' => $sale,
+            'notes' => 'Rent Side edit: '.$reason,
+            'user' => $user,
+        ];
+
+        if (Money::isPositive($diff)) {
+            // more rent set aside
+            $this->cash->debit(CashAccountCode::CanteenCash, $diff, 'rent_reserve_transfer', $ctx);
+            $this->cash->credit(CashAccountCode::RentReserve, $diff, 'rent_reserve_transfer', $ctx);
+            $this->rent->bumpReservedTotal($sale->dailySession->business_date->year, $sale->dailySession->business_date->month, $diff);
+        } else {
+            $abs = Money::abs($diff);
+            $this->cash->debit(CashAccountCode::RentReserve, $abs, 'rent_reserve_transfer', $ctx);
+            $this->cash->credit(CashAccountCode::CanteenCash, $abs, 'rent_reserve_transfer', $ctx);
+            $this->rent->bumpReservedTotal($sale->dailySession->business_date->year, $sale->dailySession->business_date->month, Money::sub('0', $abs));
+        }
     }
 }

@@ -79,12 +79,6 @@
             <div class="stat-value" data-rent>{{ Money::format($summary['rent_reserve']) }}</div>
             <div class="stat-sub">Diya {{ Money::format($summary['rent']['paid_total']) }} / {{ Money::format($summary['rent']['target']) }}</div>
         </a>
-        <a class="stat tone-indigo" href="{{ route('owner.index') }}">
-            <div class="stat-icon"><i class="bi bi-person-badge"></i></div>
-            <div class="stat-label">Owner Recoverable</div>
-            <div class="stat-value" data-owner>{{ Money::format($summary['owner_recoverable']) }}</div>
-            <div class="stat-sub">Owner se lena hai</div>
-        </a>
     </div>
 
     @if ($segments && $segments->isNotEmpty())
@@ -109,15 +103,9 @@
             <i class="bi bi-send-fill"></i>
             <span>Vendor Ko Diye<small>Shaam ka hisab</small></span>
         </a>
-        <a href="{{ route('rent.create', $q) }}" class="action-tile tile-navy {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
-            <i class="bi bi-house-lock-fill"></i>
-            <span>Add Rent<small>Rent side rakhein</small></span>
-        </a>
     </div>
 
     <div class="chip-row">
-        <a class="chip-link" href="{{ route('expenses.create', $q) }}"><i class="bi bi-receipt"></i>Kharcha</a>
-        <a class="chip-link" href="{{ route('owner.index') }}"><i class="bi bi-person-badge"></i>Owner</a>
         <a class="chip-link" href="{{ route('closing.show', $q) }}"><i class="bi bi-lock"></i>Din Close</a>
         <a class="chip-link" href="{{ route('reports.index') }}"><i class="bi bi-bar-chart"></i>Reports</a>
     </div>

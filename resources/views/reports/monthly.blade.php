@@ -12,12 +12,25 @@
     $canNext = $month->copy()->addMonth()->startOfMonth()->lte(now());
 @endphp
 
-<x-page-header title="Monthly Report" :sub="$month->format('F Y')" :back="route('reports.index')" />
+<x-page-header title="Monthly Report" :sub="$month_label ?? $month->format('F Y')" :back="route('reports.index')" />
 
 <div class="date-nav">
     <a class="nav-btn" href="{{ route('reports.monthly', ['month' => $prev]) }}" aria-label="Pichla mahina"><i class="bi bi-chevron-left"></i></a>
-    <div class="date-pick"><i class="bi bi-calendar-month text-primary"></i><span>{{ $month->format('F Y') }}</span></div>
+    <div class="date-pick"><i class="bi bi-calendar-month text-primary"></i><span>{{ $month_label ?? $month->format('F Y') }}</span></div>
     <a class="nav-btn {{ $canNext ? '' : 'disabled' }}" href="{{ $canNext ? route('reports.monthly', ['month' => $next]) : '#' }}" aria-label="Agla mahina"><i class="bi bi-chevron-right"></i></a>
+</div>
+
+{{-- Quick jump: recent months (Sep, Oct, …) --}}
+@php
+    $monthChips = collect(range(0, 5))->map(fn ($i) => now()->startOfMonth()->subMonths($i));
+@endphp
+<div class="chip-row mb-3 no-print">
+    @foreach ($monthChips as $chip)
+        <a class="chip-link {{ $chip->format('Y-m') === $month->format('Y-m') ? 'is-active' : '' }}"
+           href="{{ route('reports.monthly', ['month' => $chip->format('Y-m')]) }}">
+            {{ $chip->format('M Y') }}
+        </a>
+    @endforeach
 </div>
 
 <div class="d-flex gap-2 mb-3 no-print">
@@ -26,10 +39,14 @@
 </div>
 
 <div class="stat-grid">
+    <div class="stat tone-indigo">
+        <div class="stat-label">Sale Wale Din</div>
+        <div class="stat-value">{{ $days_with_sales ?? 0 }}</div>
+        <div class="stat-sub">{{ $days_recorded ?? 0 }} din record · {{ $month->daysInMonth }} din mahina</div>
+    </div>
     <div class="stat tone-green"><div class="stat-label">Total Sale</div><div class="stat-value">{{ Money::format($totals['sales']) }}</div></div>
     <div class="stat tone-orange"><div class="stat-label">Total Maal (Bills)</div><div class="stat-value">{{ Money::format($totals['bills']) }}</div></div>
     <div class="stat tone-red"><div class="stat-label">Vendor Payments</div><div class="stat-value">{{ Money::format(\App\Support\Money::add($totals['vendor_payments'], $totals['paid_on_bill'])) }}</div></div>
-    <div class="stat tone-blue"><div class="stat-label">Kharcha</div><div class="stat-value">{{ Money::format($totals['expenses']) }}</div></div>
 </div>
 
 <div class="tbl-wrap mb-3">

@@ -46,6 +46,12 @@
 {{-- monthly --}}
 <form method="GET" action="{{ route('reports.monthly') }}" class="card-x">
     <div class="card-title"><i class="bi bi-calendar-month"></i> Monthly Report</div>
+    <div class="field-hint mb-2">September, October… — mahina choose karein. Report mein sale wale din ka total bhi aata hai.</div>
+    <div class="chip-row mb-3">
+        @foreach ($recentMonths as $m)
+            <a class="chip-link" href="{{ route('reports.monthly', ['month' => $m->format('Y-m')]) }}">{{ $m->format('F Y') }}</a>
+        @endforeach
+    </div>
     <div class="field">
         <label for="month">Mahina</label>
         <input type="month" id="month" name="month" class="form-control-x" value="{{ $today->format('Y-m') }}" max="{{ $today->format('Y-m') }}" required>

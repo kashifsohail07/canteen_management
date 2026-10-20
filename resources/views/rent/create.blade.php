@@ -16,6 +16,18 @@
 
 <x-page-header title="Rent" :sub="$month" :back="$back" />
 
+<div class="card-x mb-3">
+    <div class="fw-bold"><i class="bi bi-info-circle-fill text-primary"></i> Roz ka Rent Side</div>
+    <div class="small text-muted mt-1">
+        Ab <b>Add Sale</b> pe <b>Rent Side</b> pill se amount likhein — First Break jaisa.
+        Yahan se sirf malik ko rent <b>pay</b> ya skip note.
+    </div>
+    <a href="{{ route('sales.create', array_filter(['date' => $entryDate, 'segment' => \App\Models\SaleSegment::where('is_rent_side', true)->value('id')])) }}"
+       class="btn-xl btn-sm-x btn-blue w-100 mt-2">
+        <i class="bi bi-cash-coin"></i> Add Sale → Rent Side
+    </a>
+</div>
+
 <div class="card-x">
     <div class="d-flex justify-content-between align-items-end mb-2">
         <div>

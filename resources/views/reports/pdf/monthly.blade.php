@@ -1,11 +1,18 @@
 @extends('reports.pdf._layout')
 
 @section('title', 'Monthly Report')
-@section('subtitle', $month->format('F Y'))
+@section('subtitle', $month_label ?? $month->format('F Y'))
 
 @use('App\Support\Money')
 
 @section('body')
+<p>
+    <strong>Sale wale din:</strong> {{ $days_with_sales ?? 0 }}
+    · Recorded days: {{ $days_recorded ?? 0 }}
+    · Month days: {{ $month->daysInMonth }}
+    · Total sale: {{ Money::format($totals['sales']) }}
+</p>
+
 <h2>Day by day</h2>
 <table>
     <thead>

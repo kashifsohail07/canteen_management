@@ -42,9 +42,14 @@ trait SeedsCanteenBasics
         foreach (['First Break', 'Second Break', 'School Closing / Off Time', 'Other Sale'] as $i => $name) {
             SaleSegment::updateOrCreate(
                 ['slug' => Str::slug($name)],
-                ['name' => $name, 'sort_order' => $i + 1, 'is_active' => true],
+                ['name' => $name, 'sort_order' => $i + 1, 'is_active' => true, 'is_rent_side' => false],
             );
         }
+
+        SaleSegment::updateOrCreate(
+            ['slug' => 'rent-side'],
+            ['name' => 'Rent Side', 'sort_order' => 5, 'is_active' => true, 'is_rent_side' => true],
+        );
 
         $settings = app(SettingService::class);
         $settings->set('monthly_rent_target', '71000');

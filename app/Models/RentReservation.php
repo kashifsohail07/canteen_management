@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class RentReservation extends Model
 {
     protected $fillable = [
-        'daily_session_id', 'rent_obligation_id', 'amount', 'notes', 'recorded_at', 'created_by',
+        'daily_session_id', 'rent_obligation_id', 'sale_id', 'amount', 'notes', 'recorded_at', 'created_by',
         'idempotency_key', 'is_reversed',
     ];
 
@@ -29,6 +29,11 @@ class RentReservation extends Model
     public function rentObligation(): BelongsTo
     {
         return $this->belongsTo(RentObligation::class);
+    }
+
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
     }
 
     public function creator(): BelongsTo

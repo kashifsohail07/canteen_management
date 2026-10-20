@@ -107,7 +107,13 @@ class ReportService
             ->groupBy('daily_session_id')
             ->pluck('total', 'daily_session_id');
 
-        $sales = $sum(Sale::class, 'amount');
+        // Bikri only — Rent Side entries are not counted as sales.
+        $sales = Sale::whereIn('daily_session_id', $ids)
+            ->where('is_reversed', false)
+            ->where('payment_method', '!=', 'rent_side')
+            ->selectRaw('daily_session_id, SUM(amount) as total')
+            ->groupBy('daily_session_id')
+            ->pluck('total', 'daily_session_id');
         $bills = $sum(Purchase::class, 'bill_amount');
         $paidOnBill = $sum(Purchase::class, 'paid_amount');
         $payments = $sum(VendorPayment::class, 'amount');
@@ -138,9 +144,13 @@ class ReportService
 
         $total = fn (string $key) => $rows->reduce(fn ($carry, $row) => Money::add($carry, $row[$key]), Money::zero());
 
-        // sales per segment
+        $daysWithSales = $rows->filter(fn (array $row) => Money::isPositive($row['sales']))->count();
+        $daysRecorded = $rows->count();
+
+        // sales per segment (exclude Rent Side — that is not bikri)
         $segmentNames = SaleSegment::pluck('name', 'id');
         $segments = Sale::whereIn('daily_session_id', $ids)->where('is_reversed', false)
+            ->where('payment_method', '!=', 'rent_side')
             ->selectRaw('sale_segment_id, SUM(amount) as total, COUNT(*) as cnt')
             ->groupBy('sale_segment_id')->get()
             ->map(fn ($r) => ['name' => $segmentNames[$r->sale_segment_id] ?? 'Segment', 'total' => Money::of($r->total), 'count' => (int) $r->cnt])
@@ -161,7 +171,10 @@ class ReportService
 
         return [
             'month' => $start,
+            'month_label' => $start->format('F Y'), // e.g. September 2026
             'rows' => $rows,
+            'days_with_sales' => $daysWithSales,
+            'days_recorded' => $daysRecorded,
             'totals' => [
                 'sales' => $total('sales'),
                 'bills' => $total('bills'),

@@ -56,7 +56,7 @@
         <a href="{{ route('payments.create') }}" class="nav-item {{ $is('payments.*') ? 'active' : '' }}">
             <i class="bi bi-send"></i><span>Pay</span>
         </a>
-        <button type="button" class="nav-item {{ $is('vendors.*', 'rent.*', 'owner.*', 'expenses.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*') ? 'active' : '' }}" @click="moreOpen = true" aria-haspopup="dialog">
+        <button type="button" class="nav-item {{ $is('vendors.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*') ? 'active' : '' }}" @click="moreOpen = true" aria-haspopup="dialog">
             <i class="bi bi-grid-3x3-gap"></i><span>More</span>
         </button>
     </nav>
@@ -73,13 +73,11 @@
     <h3>Menu <small class="text-muted fw-normal fs-6">· {{ $user->name }} ({{ $user->role->label() }})</small></h3>
     <div class="sheet-grid">
         <a class="sheet-link" href="{{ route('vendors.index') }}"><i class="bi bi-people-fill"></i>Vendors</a>
-        <a class="sheet-link" href="{{ route('expenses.create') }}"><i class="bi bi-receipt"></i>Kharcha</a>
-        <a class="sheet-link" href="{{ route('rent.create') }}"><i class="bi bi-house-lock-fill"></i>Rent</a>
-        <a class="sheet-link" href="{{ route('owner.index') }}"><i class="bi bi-person-badge-fill"></i>Owner</a>
+        <a class="sheet-link" href="{{ route('rent.pay') }}"><i class="bi bi-house-lock-fill"></i>Rent Pay</a>
         <a class="sheet-link" href="{{ route('closing.show') }}"><i class="bi bi-lock-fill"></i>Din Close</a>
         <a class="sheet-link" href="{{ route('reports.index') }}"><i class="bi bi-file-earmark-bar-graph-fill"></i>Reports</a>
         @if ($user->isAdmin())
-            <a class="sheet-link" href="{{ route('segments.index') }}"><i class="bi bi-ui-checks-grid"></i>Segments &amp; Rent</a>
+            <a class="sheet-link" href="{{ route('segments.index') }}"><i class="bi bi-ui-checks-grid"></i>Segments</a>
             <a class="sheet-link" href="{{ route('settings.edit') }}"><i class="bi bi-gear-fill"></i>Settings</a>
             <a class="sheet-link" href="{{ route('setup.vendors') }}"><i class="bi bi-magic"></i>Vendor Setup</a>
         @endif

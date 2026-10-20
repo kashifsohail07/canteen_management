@@ -35,34 +35,19 @@ class DayCloseChecklistTest extends TestCase
         $this->assertTrue(DailySession::sole()->isOpen());
     }
 
-    public function test_close_succeeds_when_empty_segment_and_rent_have_reasons(): void
+    public function test_close_succeeds_when_empty_segments_have_reasons(): void
     {
-        // Only First Break has a sale — other active segments need reasons; rent needs reason.
+        // Only First Break has a sale — other active segments (incl. Rent Side) need reasons.
         $this->actingAs($this->staff)->post('/sales', [
             'sale_segment_id' => $this->segment()->id,
             'amount' => '500',
         ])->assertRedirect();
 
         $today = now()->toDateString();
-        $empty = \App\Models\SaleSegment::where('is_active', true)
-            ->where('id', '!=', $this->segment()->id)
-            ->pluck('id');
-
-        $payload = [
-            'business_date' => $today,
-            'actual_counted_cash' => '500',
-            'rent_reason' => 'Sale kam thi aaj',
-            'segment_reasons' => [],
-        ];
-        foreach ($empty as $id) {
-            $payload['segment_reasons'][$id] = 'Is break mein sale nahi';
-        }
-
-        $this->actingAs($this->admin)->post('/closing', $payload)->assertRedirect();
+        $this->actingAs($this->admin)->post('/closing', $this->closeDayPayload('500', $today))->assertRedirect();
 
         $session = DailySession::sole();
         $this->assertTrue($session->isClosed());
-        $this->assertSame('Sale kam thi aaj', $session->close_checklist['rent']);
         $this->assertNotEmpty($session->close_checklist['segments']);
         $this->assertSame(1, ActivityLog::where('activity_type', 'rent_skip')->count());
     }
@@ -93,12 +78,4 @@ class DayCloseChecklistTest extends TestCase
         $this->assertNull(DailySession::sole()->close_checklist['rent'] ?? null);
     }
 
-    public function test_admin_can_update_daily_rent_from_segments_page(): void
-    {
-        $this->actingAs($this->admin)->put(route('segments.rent.update'), [
-            'daily_rent_suggest' => '4500',
-        ])->assertRedirect(route('segments.index'));
-
-        $this->assertSame('4500.00', app(\App\Services\SettingService::class)->getDecimal('daily_rent_suggest', 0));
-    }
 }

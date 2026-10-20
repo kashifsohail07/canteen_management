@@ -70,6 +70,7 @@ class RentService
             $reservation = RentReservation::create([
                 'daily_session_id' => $session->id,
                 'rent_obligation_id' => $obligation->id,
+                'sale_id' => $data['sale_id'] ?? null,
                 'amount' => $amount,
                 'notes' => $data['notes'] ?? null,
                 'recorded_at' => $now,
@@ -167,6 +168,21 @@ class RentService
             );
 
             return $payment->refresh();
+        });
+    }
+
+    /** Adjust month reserved_total by a signed delta (used when editing Rent Side amount). */
+    public function bumpReservedTotal(int $year, int $month, string $delta): void
+    {
+        if (Money::isZero($delta)) {
+            return;
+        }
+
+        DB::transaction(function () use ($year, $month, $delta) {
+            $obligation = $this->lockObligation($year, $month);
+            $obligation->update([
+                'reserved_total' => Money::add($obligation->reserved_total, $delta),
+            ]);
         });
     }
 

@@ -118,7 +118,9 @@ class ActivityController extends Controller
             $record instanceof Sale => (function () use ($record, $add) {
                 $add('Segment', $record->segment->name);
                 $add('Amount', Money::format($record->amount));
-                $add('Payment', ucfirst($record->payment_method));
+                $add('Payment', $record->payment_method === 'rent_side'
+                    ? 'Rent Side (reserve)'
+                    : ucfirst($record->payment_method));
                 $add('Notes', $record->notes);
             })(),
             $record instanceof VendorPayment => (function () use ($record, $add) {

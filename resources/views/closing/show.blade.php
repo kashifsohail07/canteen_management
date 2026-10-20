@@ -136,34 +136,19 @@
                     @foreach ($gaps['segments'] as $gap)
                         <div class="field">
                             <label for="seg_reason_{{ $gap['segment_id'] }}">
-                                Sale – {{ $gap['name'] }} <span class="badge-soft red">Rs. 0</span>
+                                {{ $gap['name'] }} <span class="badge-soft red">Rs. 0</span>
                             </label>
                             <input type="text" id="seg_reason_{{ $gap['segment_id'] }}"
                                    name="segment_reasons[{{ $gap['segment_id'] }}]"
                                    class="form-control-x" maxlength="500" required
                                    value="{{ old('segment_reasons.'.$gap['segment_id']) }}"
-                                   placeholder="Kyun sale nahi? jaise: holiday, school band">
+                                   placeholder="Kyun entry nahi? jaise: holiday / sale kam">
                             @error('segment_reasons.'.$gap['segment_id'])
                                 <div class="field-error">{{ $message }}</div>
                             @enderror
                         </div>
                     @endforeach
 
-                    @if ($gaps['rent_missing'])
-                        <div class="field">
-                            <label for="rent_reason">
-                                Rent Side <span class="badge-soft red">nahi rakha</span>
-                                <small class="text-muted">(suggest {{ Money::format($gaps['daily_rent_suggest'] ?? 0) }})</small>
-                            </label>
-                            <input type="text" id="rent_reason" name="rent_reason" class="form-control-x"
-                                   maxlength="500" required value="{{ old('rent_reason') }}"
-                                   placeholder="Kyun skip? jaise: sale kam thi">
-                            @error('rent_reason')<div class="field-error">{{ $message }}</div>@enderror
-                            <div class="field-hint">
-                                Pehle <a href="{{ route('rent.create', ['date' => $date->toDateString()]) }}">Rent Side</a> rakh sakte hain, ya yahan wajah likh kar close karein.
-                            </div>
-                        </div>
-                    @endif
                 </div>
             @endif
 

@@ -48,7 +48,9 @@ class SaleController extends Controller
     {
         $data = $request->validated();
         $sale = $sales->record($data, $request->user());
-        $message = 'Sale save ho gayi: '.Money::format($sale->amount).' ('.$sale->segment->name.')';
+        $message = $sale->segment?->isRentSide()
+            ? 'Rent Side rakh diya: '.Money::format($sale->amount)
+            : 'Sale save ho gayi: '.Money::format($sale->amount).' ('.$sale->segment->name.')';
 
         if ($request->boolean('next') && ! $request->expectsJson()) {
             $ids = SaleSegment::where('is_active', true)->orderBy('sort_order')->orderBy('id')->pluck('id');

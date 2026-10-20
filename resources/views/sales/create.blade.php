@@ -43,7 +43,9 @@
                     <input type="radio" name="sale_segment_id" value="{{ $segment->id }}" @checked($selectedId === $segment->id) required>
                     <span class="pill">
                         {{ $segment->name }}
-                        @if (isset($totals[$segment->id]) && bccomp($totals[$segment->id]['total'], '0', 2) > 0)
+                        @if ($segment->is_rent_side)
+                            <small>side</small>
+                        @elseif (isset($totals[$segment->id]) && bccomp($totals[$segment->id]['total'], '0', 2) > 0)
                             <small>{{ Money::format($totals[$segment->id]['total']) }}</small>
                         @endif
                     </span>

@@ -24,9 +24,12 @@ class ReportController extends Controller
 
     public function index(Request $request): View
     {
+        $recentMonths = collect(range(0, 5))->map(fn (int $i) => now()->startOfMonth()->subMonths($i));
+
         return view('reports.index', [
             'vendors' => Vendor::orderBy('name')->get(['id', 'name']),
             'today' => now(),
+            'recentMonths' => $recentMonths,
         ]);
     }
 
@@ -153,7 +156,8 @@ class ReportController extends Controller
     private function monthlyCsv(array $d): array
     {
         $rows = [
-            ['Canteen Hisab – Monthly Report', $d['month']->format('F Y')],
+            ['Canteen Hisab – Monthly Report', $d['month_label'] ?? $d['month']->format('F Y')],
+            ['Days with sales', $d['days_with_sales'] ?? 0, 'Days recorded', $d['days_recorded'] ?? 0, 'Days in month', $d['month']->daysInMonth],
             [],
             ['Date', 'Status', 'Sales', 'Bills', 'Paid on bill', 'Vendor payments', 'Expenses', 'Rent reserved', 'Rent paid', 'Owner deposits', 'Closing cash', 'Difference'],
         ];

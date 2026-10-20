@@ -101,7 +101,6 @@ Route::middleware(['auth', 'active', 'admin'])->group(function () {
 
     Route::get('/segments', [SaleSegmentController::class, 'index'])->name('segments.index');
     Route::post('/segments', [SaleSegmentController::class, 'store'])->name('segments.store');
-    Route::put('/segments/rent-side', [SaleSegmentController::class, 'updateRent'])->name('segments.rent.update');
     Route::put('/segments/{segment}', [SaleSegmentController::class, 'update'])->name('segments.update');
     Route::post('/segments/{segment}/move', [SaleSegmentController::class, 'move'])->name('segments.move');
     Route::delete('/segments/{segment}', [SaleSegmentController::class, 'destroy'])->name('segments.destroy');

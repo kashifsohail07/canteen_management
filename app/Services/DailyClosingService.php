@@ -64,17 +64,10 @@ class DailyClosingService
             }
         }
 
-        $rentReserved = $this->sum(
-            RentReservation::where('daily_session_id', $session->id)->where('is_reversed', false)->get(['amount']),
-            'amount',
-        );
-        $rentSkipped = ActivityLog::where('daily_session_id', $session->id)
-            ->where('activity_type', 'rent_skip')
-            ->exists();
-
+        // Rent Side is a sale segment now — empty Rent Side pill is enough; no separate rent field.
         return [
             'segments' => $emptySegments,
-            'rent_missing' => Money::isZero($rentReserved) && ! $rentSkipped,
+            'rent_missing' => false,
             'daily_rent_suggest' => $this->settings->getDecimal('daily_rent_suggest', 5000),
         ];
     }
@@ -97,22 +90,24 @@ class DailyClosingService
                 ?? $input['segment_reasons'][$id]
                 ?? ''));
             if (strlen($reason) < 3) {
-                $errors["segment_reasons.{$id}"] = "\"{$gap['name']}\" ki sale nahi — wajah likhein (kam az kam 3 characters).";
+                $errors["segment_reasons.{$id}"] = "\"{$gap['name']}\" ki entry nahi — wajah likhein (kam az kam 3 characters).";
             } else {
                 $segmentReasons[$id] = $reason;
             }
         }
 
-        $rentReason = null;
-        if ($gaps['rent_missing']) {
-            $rentReason = trim((string) ($input['rent_reason'] ?? ''));
-            if (strlen($rentReason) < 3) {
-                $errors['rent_reason'] = 'Rent Side aaj nahi rakha — wajah likhein, ya pehle Rent Side / Skip karein.';
-            }
-        }
-
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
+        }
+
+        // If empty Rent Side segment got a reason, treat it as rent skip for the ledger note.
+        $rentReason = null;
+        foreach ($segmentReasons as $segId => $why) {
+            $seg = SaleSegment::find((int) $segId);
+            if ($seg?->isRentSide()) {
+                $rentReason = $why;
+                break;
+            }
         }
 
         return [
@@ -156,8 +151,9 @@ class DailyClosingService
         $expected = Money::sub(Money::add($opening, $totalIn), $totalOut);
 
         $sales = Sale::where('daily_session_id', $session->id)->where('is_reversed', false)->get(['amount', 'payment_method']);
-        $salesTotal = $this->sum($sales, 'amount');
-        $cashSales = $this->sum($sales->where('payment_method', 'cash'), 'amount');
+        $bikri = $sales->where('payment_method', '!=', 'rent_side');
+        $salesTotal = $this->sum($bikri, 'amount');
+        $cashSales = $this->sum($bikri->where('payment_method', 'cash'), 'amount');
 
         $purchases = Purchase::where('daily_session_id', $session->id)->where('is_reversed', false)->get(['bill_amount', 'paid_amount']);
         $purchasesTotal = $this->sum($purchases, 'bill_amount');
@@ -179,7 +175,7 @@ class DailyClosingService
             'sales_total' => $salesTotal,
             'cash_sales' => $cashSales,
             'non_cash_sales' => Money::sub($salesTotal, $cashSales),
-            'sales_count' => $sales->count(),
+            'sales_count' => $bikri->count(),
             'purchases_total' => $purchasesTotal,
             'purchases_paid' => $purchasesPaid,
             'purchases_on_credit' => Money::sub($purchasesTotal, $purchasesPaid),
