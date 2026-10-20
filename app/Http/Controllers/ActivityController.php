@@ -10,6 +10,7 @@ use App\Models\Purchase;
 use App\Models\RentPayment;
 use App\Models\RentReservation;
 use App\Models\Sale;
+use App\Models\SaleSegment;
 use App\Models\VendorPayment;
 use App\Services\ImageService;
 use App\Support\Labels;
@@ -47,6 +48,11 @@ class ActivityController extends Controller
             ]);
         }
 
+        $canEditSale = $request->user()?->isSuperUser()
+            && $record instanceof Sale
+            && ! $record->is_reversed
+            && $activityLog->dailySession->isOpen();
+
         return view('activity.show', [
             'activity' => $activityLog,
             'record' => $record,
@@ -54,6 +60,10 @@ class ActivityController extends Controller
             'purchase' => $purchase,
             'hasImage' => $hasImage,
             'topDate' => $activityLog->dailySession->business_date,
+            'canEditSale' => $canEditSale,
+            'segments' => $canEditSale
+                ? SaleSegment::where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()
+                : collect(),
         ]);
     }
 

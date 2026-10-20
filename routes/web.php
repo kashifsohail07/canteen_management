@@ -113,3 +113,12 @@ Route::middleware(['auth', 'active', 'admin'])->group(function () {
     Route::get('/setup/vendors', [SetupController::class, 'vendors'])->name('setup.vendors');
     Route::post('/setup/vendors', [SetupController::class, 'storeVendors'])->name('setup.vendors.store');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Super User only — edit posted sales (and later other entries)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'active', 'super_user'])->group(function () {
+    Route::put('/sales/{sale}', [SaleController::class, 'update'])->name('sales.update');
+});

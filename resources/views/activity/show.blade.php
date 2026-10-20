@@ -44,6 +44,63 @@
     @endforeach
 </div>
 
+@if ($canEditSale ?? false)
+    @php
+        /** @var \App\Models\Sale $record */
+        $selectedSegment = (int) old('sale_segment_id', $record->sale_segment_id);
+    @endphp
+    <div class="card-x">
+        <div class="card-title">Sale Edit (Super User)</div>
+
+        <form id="sale-edit-form" method="POST" action="{{ route('sales.update', $record) }}"
+              x-data="{ submitting: false }"
+              @submit="if (submitting) { $event.preventDefault() } else { submitting = true }">
+            @csrf
+            @method('PUT')
+
+            <div class="field">
+                <span class="field-label">Segment</span>
+                <div class="pill-group">
+                    @foreach ($segments as $segment)
+                        <label class="m-0">
+                            <input type="radio" name="sale_segment_id" value="{{ $segment->id }}"
+                                   @checked($selectedSegment === $segment->id) required>
+                            <span class="pill">{{ $segment->name }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                @error('sale_segment_id')<div class="field-error">{{ $message }}</div>@enderror
+            </div>
+
+            <x-money-input name="amount" label="Sale Amount" :value="Money::of($record->amount)" />
+
+            <div class="field">
+                <label for="sale_notes">Note (optional)</label>
+                <input type="text" id="sale_notes" name="notes" class="form-control-x" maxlength="500"
+                       value="{{ old('notes', $record->notes) }}" placeholder="Koi note…">
+                @error('notes')<div class="field-error">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="field">
+                <label for="sale_reason">Wajah (zaroori)</label>
+                <input type="text" id="sale_reason" name="reason" class="form-control-x" maxlength="500"
+                       required value="{{ old('reason') }}" placeholder="Kyun badal rahe hain?">
+                @error('reason')<div class="field-error">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="field-hint mb-2">Cash drawer amount ke farq se adjust ho jayega. Audit log mein wajah save hogi.</div>
+
+            <button type="submit" class="btn-xl btn-sm-x btn-save w-100" :class="{ disabled: submitting }">
+                <i class="bi bi-check2-circle"></i> Sale Update Karein
+            </button>
+        </form>
+    </div>
+@elseif (auth()->user()?->isSuperUser() && ($record instanceof \App\Models\Sale) && $activity->dailySession->isClosed())
+    <div class="card-x">
+        <div class="field-hint mb-0"><i class="bi bi-lock-fill"></i> Din close hai — pehle reopen karein, phir sale edit ho sakti hai.</div>
+    </div>
+@endif
+
 @if ($purchase)
     <div class="card-x" x-data="imageCapture()">
         <div class="card-title">{{ $hasImage ? 'Photo Badlein' : 'Photo Add Karein' }}</div>

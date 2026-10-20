@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\ResolvesBusinessDate;
 use App\Http\Controllers\Concerns\RespondsToForms;
 use App\Http\Requests\StoreSaleRequest;
+use App\Http\Requests\UpdateSaleRequest;
+use App\Models\ActivityLog;
+use App\Models\Sale;
 use App\Models\SaleSegment;
 use App\Services\DailySessionService;
 use App\Services\DashboardService;
@@ -58,5 +61,20 @@ class SaleController extends Controller
         }
 
         return $this->succeed($request, $message, $sale->daily_session_id, $data['business_date'] ?? null);
+    }
+
+    /** Super User: update an existing sale (segment / amount / notes). */
+    public function update(UpdateSaleRequest $request, Sale $sale, SaleService $sales): RedirectResponse
+    {
+        $updated = $sales->update($sale, $request->validated(), $request->user());
+
+        $activity = ActivityLog::query()
+            ->where('reference_type', 'sale')
+            ->where('reference_id', $updated->id)
+            ->first();
+
+        return redirect()
+            ->route($activity ? 'activity.show' : 'dashboard', $activity?->id)
+            ->with('success', 'Sale update ho gayi: '.Money::format($updated->amount).' ('.$updated->segment->name.')');
     }
 }
