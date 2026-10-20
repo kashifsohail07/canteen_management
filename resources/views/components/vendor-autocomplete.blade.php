@@ -25,7 +25,7 @@
         <div class="flex-grow-1 min-w-0">
             <div class="fw-bold text-truncate" x-text="selected && selected.name"></div>
             <div class="small" :class="selected && parseFloat(selected.balance) > 0 ? 'text-owed' : 'text-adv'"
-                 x-text="selected && (parseFloat(selected.balance) === 0 ? 'Cleared' : (parseFloat(selected.balance) > 0 ? fmt(selected.balance) + ' owed' : fmt(Math.abs(selected.balance)) + ' advance'))"></div>
+                 x-text="selected && (parseFloat(selected.balance) === 0 ? 'Clear' : (parseFloat(selected.balance) > 0 ? fmt(selected.balance) + ' dena hai' : fmt(Math.abs(selected.balance)) + ' advance'))"></div>
         </div>
         <button type="button" class="btn-xl btn-sm-x btn-ghost" @click="clear()">Change</button>
     </div>

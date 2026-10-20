@@ -66,7 +66,7 @@
                         </div>
                         <div class="val {{ $owed > 0 ? 'text-owed' : ($owed < 0 ? 'text-adv' : 'text-muted') }}">
                             {{ Money::format(Money::abs($card['current'])) }}
-                            <div class="meta">{{ $owed > 0 ? 'owed' : ($owed < 0 ? 'advance' : 'clear') }}</div>
+                            <div class="meta">{{ $owed > 0 ? 'dena hai' : ($owed < 0 ? 'advance' : 'clear') }}</div>
                         </div>
                         <i class="bi bi-chevron-down vendor-hub-chevron"></i>
                     </button>
@@ -195,7 +195,7 @@
                                 <div class="balance-box" x-show="n(amount) > 0" x-cloak>
                                     <span>Balance after payment</span>
                                     <b :class="balanceClass(newBalancePay)"
-                                       x-text="Math.abs(newBalancePay) < 0.005 ? 'Cleared' : (newBalancePay > 0 ? fmt(newBalancePay) + ' owed' : fmt(Math.abs(newBalancePay)) + ' advance')"></b>
+                                       x-text="Math.abs(newBalancePay) < 0.005 ? 'Clear' : (newBalancePay > 0 ? fmt(newBalancePay) + ' dena hai' : fmt(Math.abs(newBalancePay)) + ' advance')"></b>
                                 </div>
 
                                 <div class="row-btns mt-2">

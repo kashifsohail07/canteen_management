@@ -50,7 +50,7 @@
             <div class="balance-box">
                 <span>Previous balance</span>
                 <b :class="balanceClass(prev)"
-                   x-text="Math.abs(prev) < 0.005 ? 'Cleared' : (prev > 0 ? fmt(prev) + ' owed' : fmt(Math.abs(prev)) + ' advance')"></b>
+                   x-text="Math.abs(prev) < 0.005 ? 'Clear' : (prev > 0 ? fmt(prev) + ' dena hai' : fmt(Math.abs(prev)) + ' advance')"></b>
             </div>
 
             <div class="today-box" x-show="todayLines.length" x-cloak>
@@ -84,7 +84,7 @@
                 <div class="vbs-row total">
                     <span>New balance</span>
                     <b :class="balanceClass(newBalanceBill)"
-                       x-text="Math.abs(newBalanceBill) < 0.005 ? 'Cleared' : (newBalanceBill > 0 ? fmt(newBalanceBill) + ' owed' : fmt(Math.abs(newBalanceBill)) + ' advance')"></b>
+                       x-text="Math.abs(newBalanceBill) < 0.005 ? 'Clear' : (newBalanceBill > 0 ? fmt(newBalanceBill) + ' dena hai' : fmt(Math.abs(newBalanceBill)) + ' advance')"></b>
                 </div>
             </div>
 

@@ -66,7 +66,7 @@
         </a>
         <a class="stat tone-orange" href="{{ route('payments.create', $q) }}">
             <div class="stat-icon"><i class="bi bi-people"></i></div>
-            <div class="stat-label">Vendor owed</div>
+            <div class="stat-label">Vendors ko dena hai</div>
             <div class="stat-value" data-vendors>{{ Money::format($summary['vendors_owed']) }}</div>
             <div class="stat-sub">{{ $vendorCount }} {{ $vendorCount === 1 ? 'vendor' : 'vendors' }}</div>
         </a>
