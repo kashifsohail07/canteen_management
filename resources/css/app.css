@@ -913,6 +913,25 @@ a {
     align-items: stretch;
 }
 
+.mall-balance-sheet {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+}
+
+.photo-actions {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.photo-actions .photo-drop {
+    margin-bottom: 0;
+}
+
 .btn-settle {
     display: flex;
     align-items: center;

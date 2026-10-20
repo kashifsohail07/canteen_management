@@ -25,16 +25,16 @@
         <div class="flex-grow-1 min-w-0">
             <div class="fw-bold text-truncate" x-text="selected && selected.name"></div>
             <div class="small" :class="selected && parseFloat(selected.balance) > 0 ? 'text-owed' : 'text-adv'"
-                 x-text="selected && (parseFloat(selected.balance) === 0 ? 'Koi baqaya nahi' : (parseFloat(selected.balance) > 0 ? fmt(selected.balance) + ' dena hai' : fmt(Math.abs(selected.balance)) + ' advance'))"></div>
+                 x-text="selected && (parseFloat(selected.balance) === 0 ? 'Cleared' : (parseFloat(selected.balance) > 0 ? fmt(selected.balance) + ' owed' : fmt(Math.abs(selected.balance)) + ' advance'))"></div>
         </div>
-        <button type="button" class="btn-xl btn-sm-x btn-ghost" @click="clear()">Badlein</button>
+        <button type="button" class="btn-xl btn-sm-x btn-ghost" @click="clear()">Change</button>
     </div>
 
     {{-- search box --}}
     <div class="ac" x-show="!selected">
         <div class="ac-input-wrap">
             <i class="bi bi-search"></i>
-            <input id="vendor_q" x-ref="q" type="text" class="form-control-x" placeholder="Vendor ka naam likhein…"
+            <input id="vendor_q" x-ref="q" type="text" class="form-control-x" placeholder="Search vendor…"
                    autocomplete="off" autocapitalize="words" enterkeyhint="search"
                    x-model="query" @focus="onFocus()" @input="onInput()"
                    @keydown.arrow-down.prevent="move(1)" @keydown.arrow-up.prevent="move(-1)"
@@ -52,9 +52,9 @@
                 </li>
             </template>
             <li class="ac-empty" x-show="!loading && items.length === 0">
-                Koi vendor nahi mila. <a href="{{ route('vendors.create') }}">Naya vendor banayein</a>
+                No vendor found. <a href="{{ route('vendors.create') }}">Add a vendor</a>
             </li>
-            <li class="ac-empty" x-show="loading && items.length === 0">Dhoond rahe hain…</li>
+            <li class="ac-empty" x-show="loading && items.length === 0">Searching…</li>
         </ul>
     </div>
     @error($name)<div class="field-error">{{ $message }}</div>@enderror

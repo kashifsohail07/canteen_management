@@ -97,7 +97,7 @@
         </a>
         <a href="{{ route('purchases.create', $q) }}" class="action-tile tile-blue {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
             <i class="bi bi-basket2-fill"></i>
-            <span>Maal Entry<small>Bill + photo</small></span>
+            <span>Add Mall<small>Bill amount</small></span>
         </a>
         <a href="{{ route('payments.create', $q) }}" class="action-tile tile-red {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
             <i class="bi bi-send-fill"></i>

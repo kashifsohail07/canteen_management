@@ -42,7 +42,7 @@ class StorePurchaseRequest extends FormRequest
             function ($validator) {
                 $paid = (float) $this->input('paid_amount', 0);
                 if ($paid > 0 && ! $this->input('payment_source')) {
-                    $validator->errors()->add('payment_source', 'Paisay kahan se diye? Canteen cash ya personal pocket chunein.');
+                    $validator->errors()->add('payment_source', 'Choose payment source: canteen cash or personal pocket.');
                 }
             },
         ];
@@ -51,13 +51,13 @@ class StorePurchaseRequest extends FormRequest
     public function messages(): array
     {
         return $this->commonMessages() + [
-            'vendor_id.required' => 'Vendor chunein.',
-            'vendor_id.exists' => 'Yeh vendor maujood nahi ya inactive hai.',
-            'bill_amount.gt' => 'Bill amount zero se zyada hona chahiye.',
-            'bill_amount.required' => 'Bill amount likhein.',
-            'paid_amount.min' => 'Paid amount negative nahi ho sakta.',
-            'bill_image.image' => 'Sirf photo (JPG, PNG, WebP) upload karein.',
-            'bill_image.max' => 'Photo 10 MB se choti honi chahiye.',
+            'vendor_id.required' => 'Please select a vendor.',
+            'vendor_id.exists' => 'This vendor is missing or inactive.',
+            'bill_amount.gt' => 'Bill amount must be greater than zero.',
+            'bill_amount.required' => 'Enter the bill amount.',
+            'paid_amount.min' => 'Paid amount cannot be negative.',
+            'bill_image.image' => 'Upload a photo (JPG, PNG, or WebP).',
+            'bill_image.max' => 'Photo must be under 10 MB.',
         ];
     }
 }

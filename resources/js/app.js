@@ -79,7 +79,7 @@ Alpine.data('txnForm', (cfg = {}) => ({
     counted: cfg.counted ?? '',
     expected: cfg.expected ?? 0,
     cashAvailable: num(cfg.cashAvailable ?? 0),
-    entryMode: cfg.entryMode || 'itemized',
+    entryMode: cfg.entryMode || 'total',
     items: cfg.items?.length
         ? cfg.items
         : [{ item_name: '', quantity: '', unit: 'pcs', rate: '' }],
@@ -129,7 +129,9 @@ Alpine.data('txnForm', (cfg = {}) => ({
         return this.effectiveBill - num(this.paid);
     },
     get overpaid() {
-        return num(this.paid) > this.prev + this.effectiveBill + 0.001;
+        const paid = num(this.paid);
+        if (paid <= 0) return false;
+        return paid > this.prev + this.effectiveBill + 0.001;
     },
     get difference() {
         return num(this.counted) - num(this.expected);

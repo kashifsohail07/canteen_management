@@ -6,7 +6,6 @@ use App\Http\Controllers\Concerns\ResolvesBusinessDate;
 use App\Http\Controllers\Concerns\RespondsToForms;
 use App\Http\Requests\StorePurchaseRequest;
 use App\Models\Purchase;
-use App\Models\PurchaseItem;
 use App\Models\Vendor;
 use App\Services\DailySessionService;
 use App\Services\PurchaseService;
@@ -95,8 +94,8 @@ class PurchaseController extends Controller
             } else {
                 $lines[] = [
                     'time' => $purchase->recorded_at->timezone(config('app.timezone'))->format('g:i A'),
-                    'item_name' => 'Total bill',
-                    'quantity' => '1.00',
+                    'item_name' => $purchase->notes ?: 'Mall',
+                    'quantity' => '1',
                     'unit' => '',
                     'rate' => Money::of($purchase->bill_amount),
                     'line_total' => Money::of($purchase->bill_amount),
@@ -125,24 +124,14 @@ class PurchaseController extends Controller
     {
         $data = $request->validated();
         $data['bill_image'] = $request->file('bill_image');
-        // UI defaults to itemized; API/tests that only send bill_amount stay on total.
         $data['entry_mode'] = $data['entry_mode']
             ?? (! empty($data['items']) ? 'itemized' : 'total');
 
         $purchase = $purchases->store($data, $request->user());
 
-        $qtyNote = '';
-        if ($purchase->relationLoaded('items') ? $purchase->items->isNotEmpty() : $purchase->items()->exists()) {
-            $purchase->loadMissing('items');
-            $qty = $purchase->items->sum(fn (PurchaseItem $i) => (float) $i->quantity);
-            if ($qty > 0) {
-                $qtyNote = ' · Qty '.rtrim(rtrim(number_format($qty, 2, '.', ''), '0'), '.');
-            }
-        }
-
-        $message = 'Maal entry save: '.$purchase->vendor->name.$qtyNote
-            .' – Bill '.Money::format($purchase->bill_amount)
-            .'. Naya balance '.Money::format($purchase->new_balance);
+        $message = 'Mall saved: '.$purchase->vendor->name
+            .' · Bill '.Money::format($purchase->bill_amount)
+            .'. New balance '.Money::format($purchase->new_balance);
 
         if ($request->boolean('next') && ! $request->expectsJson()) {
             return redirect()->route('purchases.create', array_filter([
