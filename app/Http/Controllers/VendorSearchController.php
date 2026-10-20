@@ -25,6 +25,10 @@ class VendorSearchController extends Controller
             'balance' => Money::of($v->current_balance),
             'balance_formatted' => Money::format($v->current_balance),
             'phone' => $v->phone,
+            'default_item_name' => $v->default_item_name,
+            'default_unit' => $v->default_unit,
+            'default_rate' => $v->default_rate !== null ? Money::of($v->default_rate) : null,
+            'rate_fixed' => $v->hasFixedRate(),
         ])->values());
     }
 }

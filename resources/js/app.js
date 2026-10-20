@@ -156,15 +156,28 @@ Alpine.data('txnForm', (cfg = {}) => ({
     lineTotal(row) {
         return num(row.quantity) * num(row.rate);
     },
+    /** Apply vendor defaults (fixed rate / item name) onto a row. */
+    applyVendorDefaults(row = {}) {
+        const v = this.vendor || {};
+        const fixed = !!v.rate_fixed && num(v.default_rate) > 0;
+        return {
+            item_name: row.item_name || v.default_item_name || v.name || '',
+            quantity: row.quantity ?? '',
+            unit: row.unit || v.default_unit || 'pcs',
+            rate: fixed
+                ? String(num(v.default_rate))
+                : (row.rate || (v.default_rate ? String(num(v.default_rate)) : '')),
+        };
+    },
     /** Nayi delivery row — pehle wali cheez ka naam/rate copy, qty khali focus ke liye. */
     addItem() {
         const last = this.items[this.items.length - 1] || {};
-        this.items.push({
-            item_name: last.item_name || (this.vendor?.name ?? ''),
+        this.items.push(this.applyVendorDefaults({
+            item_name: last.item_name || '',
             quantity: '',
-            unit: last.unit || 'pcs',
+            unit: last.unit || '',
             rate: last.rate || '',
-        });
+        }));
         this.$nextTick(() => {
             const inputs = this.$root.querySelectorAll('[data-qty-input]');
             const el = inputs[inputs.length - 1];
@@ -174,12 +187,7 @@ Alpine.data('txnForm', (cfg = {}) => ({
     },
     removeItem(index) {
         if (this.items.length <= 1) {
-            this.items[0] = {
-                item_name: this.vendor?.name || '',
-                quantity: '',
-                unit: 'pcs',
-                rate: this.items[0]?.rate || '',
-            };
+            this.items[0] = this.applyVendorDefaults({ quantity: '', rate: this.items[0]?.rate || '' });
             return;
         }
         this.items.splice(index, 1);
@@ -192,8 +200,8 @@ Alpine.data('txnForm', (cfg = {}) => ({
     },
     setVendor(v) {
         this.vendor = v;
-        if (v && this.items.length === 1 && !this.items[0].item_name) {
-            this.items[0].item_name = v.name || '';
+        if (v && this.items.length === 1) {
+            this.items[0] = this.applyVendorDefaults(this.items[0]);
         }
         this.loadTodayDeliveries();
     },
@@ -212,12 +220,20 @@ Alpine.data('txnForm', (cfg = {}) => ({
             if (!res.ok) return;
             const data = await res.json();
             this.todayLines = data.lines || [];
-            // pehli dafa rate suggest karo agar khali hai
-            if (data.last_rate && this.items.length === 1 && !num(this.items[0].rate)) {
-                this.items[0].rate = String(data.last_rate);
+            if (data.rate_fixed) {
+                this.vendor = { ...this.vendor, rate_fixed: true, default_rate: data.default_rate || this.vendor.default_rate };
             }
-            if (data.last_item_name && this.items.length === 1 && !this.items[0].item_name) {
-                this.items[0].item_name = data.last_item_name;
+            if (this.items.length === 1) {
+                const row = this.items[0];
+                if (data.last_rate && (!num(row.rate) || data.rate_fixed)) {
+                    row.rate = String(data.last_rate);
+                }
+                if (data.last_item_name && !row.item_name) {
+                    row.item_name = data.last_item_name;
+                }
+                if (data.last_unit && !row.unit) {
+                    row.unit = data.last_unit;
+                }
             }
         } catch (_) {
             this.todayLines = [];

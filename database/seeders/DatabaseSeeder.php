@@ -69,5 +69,17 @@ class DatabaseSeeder extends Seeder
                 'opening_balance' => $opening,
             ], $admin);
         }
+
+        // Samosay: 1 piece = Rs. 20 (fixed rate for Maal Entry).
+        Vendor::query()
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(name) LIKE ?', ['%samosa%'])
+                    ->orWhereRaw('LOWER(name) LIKE ?', ['%samosay%']);
+            })
+            ->update([
+                'default_item_name' => 'Samosay',
+                'default_unit' => 'pcs',
+                'default_rate' => '20.00',
+            ]);
     }
 }

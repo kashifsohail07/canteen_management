@@ -11,8 +11,8 @@ class Vendor extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'name', 'phone', 'notes', 'current_balance', 'opening_balance',
-        'opening_balance_locked', 'is_active', 'last_used_at',
+        'name', 'phone', 'notes', 'default_item_name', 'default_unit', 'default_rate',
+        'current_balance', 'opening_balance', 'opening_balance_locked', 'is_active', 'last_used_at',
     ];
 
     protected function casts(): array
@@ -20,10 +20,17 @@ class Vendor extends Model
         return [
             'current_balance' => 'decimal:2',
             'opening_balance' => 'decimal:2',
+            'default_rate' => 'decimal:2',
             'opening_balance_locked' => 'boolean',
             'is_active' => 'boolean',
             'last_used_at' => 'datetime',
         ];
+    }
+
+    /** True when this vendor always uses the same per-piece rate (e.g. Samosay @ Rs. 20). */
+    public function hasFixedRate(): bool
+    {
+        return $this->default_rate !== null && bccomp((string) $this->default_rate, '0', 2) > 0;
     }
 
     public function purchases(): HasMany

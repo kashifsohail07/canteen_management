@@ -48,8 +48,20 @@ class PurchaseController extends Controller
             : now()->toDateString();
 
         $session = $sessions->findForDate($date);
+        $vendor = Vendor::find((int) $request->query('vendor_id'));
+        $defaultRate = $vendor?->hasFixedRate() ? Money::of($vendor->default_rate) : null;
+        $defaultItemName = $vendor?->default_item_name;
+        $defaultUnit = $vendor?->default_unit;
+
         if (! $session) {
-            return response()->json(['lines' => [], 'last_rate' => null, 'last_item_name' => null]);
+            return response()->json([
+                'lines' => [],
+                'last_rate' => $defaultRate,
+                'last_item_name' => $defaultItemName,
+                'last_unit' => $defaultUnit,
+                'rate_fixed' => (bool) $vendor?->hasFixedRate(),
+                'default_rate' => $defaultRate,
+            ]);
         }
 
         $purchases = Purchase::with('items')
@@ -62,6 +74,7 @@ class PurchaseController extends Controller
         $lines = [];
         $lastRate = null;
         $lastItemName = null;
+        $lastUnit = null;
 
         foreach ($purchases as $purchase) {
             if ($purchase->items->isNotEmpty()) {
@@ -77,6 +90,7 @@ class PurchaseController extends Controller
                     ];
                     $lastRate = Money::of($item->rate);
                     $lastItemName = $item->item_name;
+                    $lastUnit = $item->unit;
                 }
             } else {
                 $lines[] = [
@@ -90,10 +104,20 @@ class PurchaseController extends Controller
             }
         }
 
+        // Fixed-rate vendors (e.g. Samosay @ Rs. 20) always win over last entry.
+        if ($defaultRate !== null) {
+            $lastRate = $defaultRate;
+            $lastItemName = $defaultItemName ?: $lastItemName;
+            $lastUnit = $defaultUnit ?: $lastUnit;
+        }
+
         return response()->json([
             'lines' => $lines,
             'last_rate' => $lastRate,
             'last_item_name' => $lastItemName,
+            'last_unit' => $lastUnit,
+            'rate_fixed' => (bool) $vendor?->hasFixedRate(),
+            'default_rate' => $defaultRate,
         ]);
     }
 

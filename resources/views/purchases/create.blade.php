@@ -9,6 +9,10 @@
     $vendorData = $vendor ? [
         'id' => $vendor->id, 'name' => $vendor->name, 'balance' => \App\Support\Money::of($vendor->current_balance),
         'balance_formatted' => \App\Support\Money::format($vendor->current_balance), 'phone' => $vendor->phone,
+        'default_item_name' => $vendor->default_item_name,
+        'default_unit' => $vendor->default_unit,
+        'default_rate' => $vendor->default_rate !== null ? \App\Support\Money::of($vendor->default_rate) : null,
+        'rate_fixed' => $vendor->hasFixedRate(),
     ] : null;
     $oldItems = old('items', []);
     $defaultMode = old('entry_mode', 'itemized');
@@ -115,7 +119,9 @@
                         <label :for="'rate_'+index">Rate (1 ka)</label>
                         <input type="text" inputmode="decimal" class="form-control-x" data-money
                                :name="'items['+index+'][rate]'" :id="'rate_'+index"
-                               x-model="row.rate" placeholder="15" autocomplete="off">
+                               x-model="row.rate" :placeholder="vendor?.default_rate || '20'" autocomplete="off"
+                               :readonly="!!vendor?.rate_fixed">
+                        <div class="field-hint" x-show="vendor?.rate_fixed" x-cloak>Fix rate — vendor edit se badal sakte hain.</div>
                     </div>
                 </div>
 

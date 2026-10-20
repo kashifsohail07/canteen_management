@@ -16,7 +16,17 @@ class UpdateVendorRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge(['is_active' => $this->boolean('is_active')]);
+        $rate = $this->input('default_rate');
+        $this->merge([
+            'is_active' => $this->boolean('is_active'),
+            'default_rate' => is_string($rate) ? str_replace([',', ' '], '', trim($rate)) : $rate,
+            'default_item_name' => $this->filled('default_item_name') ? trim((string) $this->input('default_item_name')) : null,
+            'default_unit' => $this->filled('default_unit') ? trim((string) $this->input('default_unit')) : null,
+        ]);
+
+        if ($this->input('default_rate') === '') {
+            $this->merge(['default_rate' => null]);
+        }
     }
 
     public function rules(): array
@@ -35,6 +45,9 @@ class UpdateVendorRequest extends FormRequest
             }],
             'phone' => ['nullable', 'string', 'max:30'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'default_item_name' => ['nullable', 'string', 'max:120'],
+            'default_unit' => ['nullable', 'string', 'max:20'],
+            'default_rate' => ['nullable', 'numeric', 'min:0', 'max:999999999', 'decimal:0,2'],
             'is_active' => ['boolean'],
         ];
     }

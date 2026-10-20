@@ -8,6 +8,10 @@
         'balance' => \App\Support\Money::of($vendor->current_balance),
         'balance_formatted' => \App\Support\Money::format($vendor->current_balance),
         'phone' => $vendor->phone,
+        'default_item_name' => $vendor->default_item_name,
+        'default_unit' => $vendor->default_unit,
+        'default_rate' => $vendor->default_rate !== null ? \App\Support\Money::of($vendor->default_rate) : null,
+        'rate_fixed' => $vendor->hasFixedRate(),
     ] : null;
 @endphp
 <div class="field" x-data="vendorAutocomplete(@js(['url' => route('vendors.search', [], false), 'focus' => $focus, 'selected' => $selected]))"

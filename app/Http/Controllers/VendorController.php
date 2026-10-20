@@ -103,6 +103,9 @@ class VendorController extends Controller
             'name' => trim($request->validated('name')),
             'phone' => $request->validated('phone'),
             'notes' => $request->validated('notes'),
+            'default_item_name' => $request->validated('default_item_name'),
+            'default_unit' => $request->validated('default_unit') ?: 'pcs',
+            'default_rate' => $request->validated('default_rate'),
             'is_active' => $request->boolean('is_active'),
         ]);
 

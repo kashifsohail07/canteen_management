@@ -26,6 +26,26 @@
         <textarea id="notes" name="notes" class="form-control-x" rows="3" maxlength="500">{{ old('notes', $vendor->notes) }}</textarea>
     </div>
 
+    <div class="card-x mb-3">
+        <div class="card-title">Maal Entry Default (optional)</div>
+        <div class="field-hint mb-2">Samosay jaisa vendor: rate fix rakhein — entry mein sirf qty likhni padegi.</div>
+        <div class="field">
+            <label for="default_item_name">Default cheez / item</label>
+            <input type="text" id="default_item_name" name="default_item_name" class="form-control-x"
+                   value="{{ old('default_item_name', $vendor->default_item_name) }}" maxlength="120" placeholder="Samosay">
+        </div>
+        <div class="qty-grid">
+            <div class="field mb-0">
+                <label for="default_unit">Unit</label>
+                <input type="text" id="default_unit" name="default_unit" class="form-control-x"
+                       value="{{ old('default_unit', $vendor->default_unit ?: 'pcs') }}" maxlength="20" placeholder="pcs">
+            </div>
+            <x-money-input name="default_rate" id="default_rate" label="Fix rate (1 ka)" :required="false" :compact="true"
+                           :value="old('default_rate', $vendor->default_rate !== null ? \App\Support\Money::of($vendor->default_rate) : '')"
+                           hint="Khali chhoro to rate har dafa type karna padega." />
+        </div>
+    </div>
+
     <label class="check-x mb-3">
         <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $vendor->is_active))>
         <span>Active hai (maal entry mein nazar aayega)</span>
