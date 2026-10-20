@@ -113,7 +113,7 @@
         </a>
         <a href="{{ route('payments.create', $q) }}" class="action-tile tile-red {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
             <i class="bi bi-send-fill"></i>
-            <span>Vendors</span>
+            <span>Pay / Mall</span>
         </a>
     </div>
 

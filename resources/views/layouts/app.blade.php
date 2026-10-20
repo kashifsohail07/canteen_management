@@ -54,7 +54,7 @@
             <i class="bi bi-plus-lg"></i><span>Bill</span>
         </a>
         <a href="{{ route('payments.create') }}" class="nav-item {{ $is('payments.*') ? 'active' : '' }}">
-            <i class="bi bi-send"></i><span>Pay</span>
+            <i class="bi bi-send"></i><span>Pay/Mall</span>
         </a>
         <button type="button" class="nav-item {{ $is('vendors.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*') ? 'active' : '' }}" @click="moreOpen = true" aria-haspopup="dialog">
             <i class="bi bi-grid-3x3-gap"></i><span>More</span>
@@ -79,7 +79,6 @@
         @if ($user->isAdmin())
             <a class="sheet-link" href="{{ route('segments.index') }}"><i class="bi bi-ui-checks-grid"></i>Segments</a>
             <a class="sheet-link" href="{{ route('settings.edit') }}"><i class="bi bi-gear-fill"></i>Settings</a>
-            <a class="sheet-link" href="{{ route('setup.vendors') }}"><i class="bi bi-magic"></i>Vendor Setup</a>
         @endif
         <form method="POST" action="{{ route('logout') }}" class="m-0">
             @csrf

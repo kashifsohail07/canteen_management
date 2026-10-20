@@ -15,9 +15,11 @@
 
 <x-page-header
     title="All Vendors"
-    :sub="$entryDate ? 'Date: '.\Illuminate\Support\Carbon::parse($entryDate)->format('d M Y') : 'Select a vendor to add mall or make a payment'"
+    :sub="$entryDate ? 'Date: '.\Illuminate\Support\Carbon::parse($entryDate)->format('d M Y') : 'Mall + payment only — opening balance: Menu → Vendors'"
     :back="$back"
-/>
+>
+    <a href="{{ route('vendors.index') }}" class="btn-xl btn-sm-x btn-ghost"><i class="bi bi-people"></i> Manage</a>
+</x-page-header>
 
 <div class="settle-cash-banner">
     <div>
