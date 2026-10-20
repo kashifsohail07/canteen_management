@@ -106,8 +106,8 @@ class SaleService
         }
 
         $amount = Money::of($data['amount'] ?? 0);
-        if (! Money::isPositive($amount)) {
-            throw ValidationException::withMessages(['amount' => 'Sale amount must be greater than zero.']);
+        if (Money::isNegative($amount)) {
+            throw ValidationException::withMessages(['amount' => 'Amount negative nahi ho sakta.']);
         }
 
         $segment = SaleSegment::where('is_active', true)->find($data['sale_segment_id'] ?? 0);
@@ -160,9 +160,11 @@ class SaleService
                 'notes' => $data['notes'] ?? null,
             ]);
 
-            $summary = $method === 'cash'
-                ? 'Cash sale'
-                : ucfirst($method).' sale (no cash movement)';
+            $summary = Money::isZero($amount)
+                ? 'Ghalti se entry — amount zero'
+                : ($method === 'cash'
+                    ? 'Cash sale'
+                    : ucfirst($method).' sale (no cash movement)');
 
             $feed = ActivityLog::query()
                 ->where('reference_type', 'sale')

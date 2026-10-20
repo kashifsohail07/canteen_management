@@ -72,7 +72,8 @@
                 @error('sale_segment_id')<div class="field-error">{{ $message }}</div>@enderror
             </div>
 
-            <x-money-input name="amount" label="Sale Amount" :value="Money::of($record->amount)" />
+            <x-money-input name="amount" label="Sale Amount" :value="Money::of($record->amount)"
+                           hint="Ghalti se entry ho to 0 likh sakte hain — cash wapas adjust ho jayega." />
 
             <div class="field">
                 <label for="sale_notes">Note (optional)</label>

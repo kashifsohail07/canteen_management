@@ -132,6 +132,26 @@ class SuperUserSaleEditTest extends TestCase
         ])->assertSessionHasErrors('reason');
     }
 
+    public function test_super_user_can_zero_out_a_mistaken_sale(): void
+    {
+        $sale = $this->postSale('2500');
+        $this->assertMoney(2500, $this->canteenCash());
+
+        $this->actingAs($this->super)->put(route('sales.update', $sale), [
+            'sale_segment_id' => $sale->sale_segment_id,
+            'amount' => '0',
+            'reason' => 'Us waqt sale zero thi',
+        ])->assertRedirect();
+
+        $sale->refresh();
+        $this->assertMoney(0, $sale->amount);
+        $this->assertMoney(0, $this->canteenCash());
+
+        $activity = ActivityLog::where('reference_type', 'sale')->where('reference_id', $sale->id)->sole();
+        $this->assertMoney(0, $activity->amount);
+        $this->assertStringContainsString('zero', strtolower($activity->summary));
+    }
+
     public function test_cannot_edit_sale_on_closed_day(): void
     {
         $sale = $this->postSale('100');

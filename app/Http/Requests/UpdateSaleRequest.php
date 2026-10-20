@@ -28,7 +28,8 @@ class UpdateSaleRequest extends FormRequest
     {
         return [
             'sale_segment_id' => ['required', 'integer', Rule::exists('sale_segments', 'id')->where('is_active', true)],
-            'amount' => ['required', 'numeric', 'gt:0', 'max:999999999', 'decimal:0,2'],
+            // Zero allowed: Super User can clear a mistaken sale entry.
+            'amount' => ['required', 'numeric', 'min:0', 'max:999999999', 'decimal:0,2'],
             'notes' => ['nullable', 'string', 'max:500'],
             'reason' => ['required', 'string', 'min:3', 'max:500'],
         ];
@@ -38,7 +39,7 @@ class UpdateSaleRequest extends FormRequest
     {
         return [
             'sale_segment_id.required' => 'Sale ka segment chunein.',
-            'amount.gt' => 'Amount zero se zyada hona chahiye.',
+            'amount.min' => 'Amount negative nahi ho sakta.',
             'reason.required' => 'Edit ki wajah likhna zaroori hai.',
             'reason.min' => 'Wajah kam az kam 3 characters ki honi chahiye.',
         ];
