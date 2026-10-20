@@ -23,8 +23,8 @@ class StorePaymentRequest extends FormRequest
     public function messages(): array
     {
         return $this->commonMessages() + [
-            'vendor_id.required' => 'Vendor chunein.',
-            'payment_source.required' => 'Paisay kahan se diye? Source chunein.',
+            'vendor_id.required' => 'Please select a vendor.',
+            'payment_source.required' => 'Choose where the payment comes from.',
         ];
     }
 }

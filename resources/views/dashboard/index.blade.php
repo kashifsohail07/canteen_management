@@ -101,7 +101,7 @@
         </a>
         <a href="{{ route('payments.create', $q) }}" class="action-tile tile-red {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
             <i class="bi bi-send-fill"></i>
-            <span>Vendor Ko Diye<small>Shaam ka hisab</small></span>
+            <span>All Vendors<small>Mall + payment</small></span>
         </a>
     </div>
 

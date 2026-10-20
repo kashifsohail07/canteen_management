@@ -14,7 +14,7 @@ class Labels
             'sale' => 'Cash Sale',
             'owner_deposit' => 'Owner Ne Cash Diya',
             'owner_repayment' => 'Owner Ko Wapis Kiya',
-            'vendor_payment' => 'Vendor Ko Diye',
+            'vendor_payment' => 'Vendor Payment',
             'expense' => 'Kharcha',
             'rent_reserve_transfer' => 'Rent Side Rakha',
             'rent_payment' => 'Rent Diya',
@@ -30,7 +30,7 @@ class Labels
         return match ($type) {
             'cash_deposit' => 'Cash Deposit',
             'repayment' => 'Wapsi (Repayment)',
-            'vendor_payment' => 'Vendor Ko Apni Jeb Se',
+            'vendor_payment' => 'Vendor Payment (Pocket)',
             'expense' => 'Kharcha Apni Jeb Se',
             'rent_payment' => 'Rent Apni Jeb Se',
             default => Str::headline($type),

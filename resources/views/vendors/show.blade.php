@@ -28,8 +28,8 @@
     <a href="{{ route('purchases.create', ['vendor' => $vendor->id]) }}" class="action-tile tile-blue" style="min-height:84px">
         <i class="bi bi-basket2-fill"></i><span>Maal Entry</span>
     </a>
-    <a href="{{ route('payments.create', ['vendor' => $vendor->id]) }}" class="action-tile tile-red" style="min-height:84px">
-        <i class="bi bi-send-fill"></i><span>Payment Karein</span>
+    <a href="{{ route('payments.create', ['vendor' => $vendor->id, 'pay' => 1]) }}" class="action-tile tile-red" style="min-height:84px">
+        <i class="bi bi-send-fill"></i><span>Add Payment</span>
     </a>
 </div>
 

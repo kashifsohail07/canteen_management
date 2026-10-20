@@ -19,6 +19,6 @@
     "shortcuts": [
         { "name": "Add Sale", "url": "/sales/create", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
         { "name": "Maal Entry", "url": "/purchases/create", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
-        { "name": "Vendor Ko Diye", "url": "/payments/create", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+        { "name": "All Vendors", "url": "/payments/create", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
     ]
 }

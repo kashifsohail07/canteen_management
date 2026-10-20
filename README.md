@@ -101,7 +101,7 @@ The timezone defaults to `Asia/Karachi` (`APP_TIMEZONE`); the business date of e
 
 ## PWA notes
 
-- `public/manifest.json` makes the app installable ("Add to Home Screen") with shortcuts for *Add Sale*, *Maal Entry* and *Vendor Ko Diye*.
+- `public/manifest.json` makes the app installable ("Add to Home Screen") with shortcuts for *Add Sale*, *Maal Entry* and *All Vendors*.
 - `public/sw.js` is a minimal service worker: it only caches the static shell (icons, manifest, `offline.html`). Authenticated pages and
   API responses are **never cached**, so money data is always live and nothing private is stored on the device.
 - Service workers need **HTTPS** (or `localhost`). Serve production over HTTPS to get the install prompt.

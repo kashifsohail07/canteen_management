@@ -155,7 +155,7 @@
             <i class="bi bi-info-circle-fill text-primary mt-1"></i>
             <div class="flex-grow-1">
                 <div class="fw-bold">Abhi paisa mat do (default)</div>
-                <div class="small text-muted">Samosay / roll wala din bhar maal chhor jata hai. Shaam ko <b>Vendor Ko Diye</b> se jitna cash ho utna de dena.</div>
+                <div class="small text-muted">Samosay / roll wala din bhar maal chhor jata hai. Shaam ko <b>All Vendors</b> se jitna cash ho utna de dena.</div>
                 <button type="button" class="btn-xl btn-sm-x btn-ghost mt-2" @click="showPay = !showPay"
                         x-text="showPay ? 'Payment chhupao' : 'Abhi hi payment deni hai?'"></button>
             </div>
