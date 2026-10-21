@@ -32,6 +32,8 @@
     --nav-h: 70px;
     --shell-w: 480px;
 
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
     --bs-primary: var(--brand-blue);
     --bs-primary-rgb: 26, 86, 219;
     --bs-success: var(--brand-green);
@@ -41,7 +43,8 @@
     --bs-body-bg: var(--page);
     --bs-body-color: var(--ink);
     --bs-border-color: var(--line);
-    --bs-body-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --bs-body-font-family: var(--font-sans);
+    --bs-font-sans-serif: var(--font-sans);
 }
 
 * {
@@ -56,9 +59,22 @@ body {
 body {
     background: linear-gradient(180deg, #dfe8f8 0%, #e9eff9 40%, #eef4f1 100%);
     background-attachment: fixed;
+    font-family: var(--font-sans);
     font-size: 15px;
+    font-weight: 400;
+    letter-spacing: -0.011em;
     color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     overscroll-behavior-y: none;
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
 }
 
 [x-cloak] {
@@ -551,24 +567,31 @@ a {
 .dash-sales {
     display: block;
     margin-bottom: 10px;
-    padding: 16px;
+    padding: 14px 16px 12px;
     color: var(--ink);
-    background: var(--surface);
-    border: 1px solid var(--line);
+    background:
+        linear-gradient(135deg, rgba(222, 247, 236, 0.55) 0%, rgba(255, 255, 255, 0.9) 42%, #fff 100%);
+    border: 1px solid #d5e8de;
     border-radius: 18px;
     box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .dash-sales:hover {
     color: var(--ink);
-    border-color: #c9d6ef;
+    border-color: #b7dcc8;
+    box-shadow: 0 4px 14px -6px rgba(5, 122, 85, 0.18), var(--shadow-sm);
 }
 
 .dash-sales-main {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
+}
+
+.dash-sales-hero {
+    min-width: 0;
 }
 
 .dash-kicker {
@@ -580,22 +603,30 @@ a {
 }
 
 .dash-big {
-    margin-top: 4px;
-    font-size: 1.7rem;
+    font-size: 1.85rem;
     font-weight: 800;
-    letter-spacing: -0.6px;
-    line-height: 1.1;
+    letter-spacing: -0.7px;
+    line-height: 1.05;
     font-variant-numeric: tabular-nums;
     color: var(--brand-green);
+}
+
+.dash-sales-hero .dash-kicker {
+    margin-top: 5px;
 }
 
 .dash-sales-side {
     text-align: right;
     flex: none;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid var(--line);
+    border-radius: 12px;
 }
 
 .dash-side-label {
-    font-size: 0.68rem;
+    margin-top: 3px;
+    font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -603,24 +634,25 @@ a {
 }
 
 .dash-side-val {
-    margin-top: 2px;
-    font-size: 1rem;
+    font-size: 1.05rem;
     font-weight: 800;
+    line-height: 1.1;
     font-variant-numeric: tabular-nums;
+    color: var(--ink);
 }
 
 .dash-sales-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0;
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid var(--line);
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #dce8e1;
 }
 
 .dash-sales-row > div {
     padding: 0 10px;
-    border-right: 1px solid var(--line);
+    border-right: 1px solid #dce8e1;
 }
 
 .dash-sales-row > div:first-child {
@@ -632,24 +664,25 @@ a {
     border-right: 0;
 }
 
+.dash-sales-row strong {
+    display: block;
+    font-size: 0.98rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.25px;
+    line-height: 1.15;
+    color: var(--ink);
+}
+
 .dash-sales-row span {
     display: block;
-    font-size: 0.65rem;
+    margin-top: 3px;
+    font-size: 0.62rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
     color: var(--muted);
-    line-height: 1.2;
-}
-
-.dash-sales-row strong {
-    display: block;
-    margin-top: 4px;
-    font-size: 0.92rem;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.2px;
-    color: var(--ink);
+    line-height: 1.25;
 }
 
 .dash-overview {

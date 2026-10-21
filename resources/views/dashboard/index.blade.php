@@ -45,7 +45,35 @@
         </div>
     </div>
 @else
-    {{-- 1. Daily cash --}}
+    {{-- 1. Today sales snapshot (top) --}}
+    <a class="dash-sales" href="{{ route('reports.daily', ['date' => $date->toDateString()]) }}">
+        <div class="dash-sales-main">
+            <div class="dash-sales-hero">
+                <div class="dash-big" data-sales>{{ Money::format($summary['sales_today']) }}</div>
+                <div class="dash-kicker">{{ $isToday ? 'Today’s sales' : 'Day’s sales' }}</div>
+            </div>
+            <div class="dash-sales-side">
+                <div class="dash-side-val">{{ Money::format($summary['purchases_today']) }}</div>
+                <div class="dash-side-label">Mall</div>
+            </div>
+        </div>
+        <div class="dash-sales-row">
+            <div>
+                <strong>{{ Money::format(Money::mul($summary['sales_today'], '0.20')) }}</strong>
+                <span>20% of sale</span>
+            </div>
+            <div>
+                <strong>{{ Money::format($summary['month_sales_avg']) }}</strong>
+                <span>{{ $summary['month_label'] }} avg</span>
+            </div>
+            <div>
+                <strong>{{ Money::format($summary['month_sales_total']) }}</strong>
+                <span>Month · {{ $summary['month_days_with_sales'] }}d</span>
+            </div>
+        </div>
+    </a>
+
+    {{-- 2. Daily cash --}}
     <section class="hero-cash" aria-label="Cash in hand">
         <div class="label"><i class="bi bi-wallet2"></i> {{ $isToday ? 'Cash in hand' : 'Closing cash' }}</div>
         <div class="amount" data-cash>{{ Money::format($cash) }}</div>
@@ -58,7 +86,7 @@
         </div>
     </section>
 
-    {{-- 2. Daily actions (top priority) --}}
+    {{-- 3. Daily actions --}}
     <div class="dash-actions">
         <a href="{{ route('sales.create', $q) }}" class="dash-action da-sale {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
             <i class="bi bi-cash-coin"></i>
@@ -79,34 +107,6 @@
         <a href="{{ route('reports.index') }}"><i class="bi bi-bar-chart"></i> Reports</a>
         <a href="{{ route('vendors.index') }}"><i class="bi bi-people"></i> Vendors</a>
     </div>
-
-    {{-- 3. Today sales snapshot --}}
-    <a class="dash-sales" href="{{ route('reports.daily', ['date' => $date->toDateString()]) }}">
-        <div class="dash-sales-main">
-            <div>
-                <div class="dash-kicker">{{ $isToday ? 'Today’s sales' : 'Day’s sales' }}</div>
-                <div class="dash-big" data-sales>{{ Money::format($summary['sales_today']) }}</div>
-            </div>
-            <div class="dash-sales-side">
-                <div class="dash-side-label">Mall</div>
-                <div class="dash-side-val">{{ Money::format($summary['purchases_today']) }}</div>
-            </div>
-        </div>
-        <div class="dash-sales-row">
-            <div>
-                <span>20% of sale</span>
-                <strong>{{ Money::format(Money::mul($summary['sales_today'], '0.20')) }}</strong>
-            </div>
-            <div>
-                <span>{{ $summary['month_label'] }} avg</span>
-                <strong>{{ Money::format($summary['month_sales_avg']) }}</strong>
-            </div>
-            <div>
-                <span>Month total · {{ $summary['month_days_with_sales'] }}d</span>
-                <strong>{{ Money::format($summary['month_sales_total']) }}</strong>
-            </div>
-        </div>
-    </a>
 
     {{-- 4. Overview (secondary) --}}
     <div class="dash-overview">
