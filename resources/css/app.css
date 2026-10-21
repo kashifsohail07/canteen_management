@@ -58,7 +58,6 @@ body {
 
 body {
     background: linear-gradient(180deg, #dfe8f8 0%, #e9eff9 40%, #eef4f1 100%);
-    background-attachment: fixed;
     font-family: var(--font-sans);
     font-size: 15px;
     font-weight: 400;
@@ -68,6 +67,12 @@ body {
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     overscroll-behavior-y: none;
+}
+
+/* App screens: lock body scroll so bottom nav never floats mid-screen on iOS */
+body.app-body {
+    height: 100%;
+    overflow: hidden;
 }
 
 button,
@@ -90,29 +95,38 @@ a {
 .app-shell {
     position: relative;
     max-width: var(--shell-w);
-    min-height: 100dvh;
+    height: 100%;
+    height: 100dvh;
+    max-height: 100%;
+    max-height: 100dvh;
     margin: 0 auto;
     background: var(--page);
     box-shadow: 0 0 60px rgba(30, 66, 159, 0.14);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .app-main {
-    flex: 1;
-    padding: 14px 14px calc(var(--nav-h) + 28px + env(safe-area-inset-bottom));
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    padding: 14px 14px 20px;
 }
 
 .app-main.has-savebar {
-    padding-bottom: calc(var(--nav-h) + 108px + env(safe-area-inset-bottom));
+    padding-bottom: 12px;
 }
 
 /* ---------- top bar ---------- */
 
 .topbar {
-    position: sticky;
-    top: 0;
+    position: relative;
     z-index: 30;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -195,61 +209,71 @@ a {
 /* ---------- bottom nav ---------- */
 
 .bottom-nav {
-    position: fixed;
-    left: 50%;
-    bottom: 0;
+    position: relative;
     z-index: 40;
+    flex-shrink: 0;
     width: 100%;
-    max-width: var(--shell-w);
     height: calc(var(--nav-h) + env(safe-area-inset-bottom));
-    padding: 8px 10px env(safe-area-inset-bottom);
-    transform: translateX(-50%);
+    padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 4px;
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(12px);
-    border-top: 1px solid var(--line);
-    box-shadow: 0 -8px 24px -12px rgba(16, 24, 40, 0.18);
+    align-items: end;
+    gap: 2px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: saturate(1.4) blur(16px);
+    -webkit-backdrop-filter: saturate(1.4) blur(16px);
+    border-top: 1px solid rgba(229, 233, 242, 0.9);
+    box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.8) inset, 0 -12px 32px -16px rgba(16, 24, 40, 0.16);
 }
 
 .bottom-nav .nav-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 2px;
+    justify-content: flex-end;
+    gap: 3px;
+    min-height: 52px;
+    padding: 6px 4px 4px;
     border: 0;
     background: none;
-    color: var(--muted);
-    font-size: 0.7rem;
+    color: #8b95a8;
+    font-size: 0.68rem;
     font-weight: 600;
+    letter-spacing: 0.01em;
     border-radius: 14px;
-    transition: color 0.15s, background 0.15s;
+    transition: color 0.18s ease;
 }
 
-.bottom-nav .nav-item i {
-    font-size: 1.35rem;
+.bottom-nav .nav-item > i {
+    font-size: 1.28rem;
+    line-height: 1;
+    transition: transform 0.18s ease;
+}
+
+.bottom-nav .nav-item > span {
     line-height: 1;
 }
 
 .bottom-nav .nav-item.active {
     color: var(--brand-blue);
-    background: var(--brand-blue-soft);
+    background: none;
 }
 
-.bottom-nav .nav-item.nav-primary i {
-    width: 44px;
-    height: 44px;
-    margin-top: -22px;
-    display: grid;
-    place-items: center;
-    color: #fff;
-    font-size: 1.35rem;
-    background: linear-gradient(135deg, var(--cash-green), var(--brand-green));
-    border-radius: 50%;
-    border: 4px solid #fff;
-    box-shadow: 0 6px 14px -4px rgba(5, 122, 85, 0.6);
+.bottom-nav .nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    width: 16px;
+    height: 3px;
+    border-radius: 99px;
+    background: var(--brand-blue);
+    transform: translateX(-50%);
+}
+
+.bottom-nav .nav-item.active > i {
+    transform: translateY(-1px);
 }
 
 .bottom-nav .nav-item.nav-primary {
@@ -258,6 +282,38 @@ a {
 
 .bottom-nav .nav-item.nav-primary.active {
     background: none;
+}
+
+.bottom-nav .nav-item.nav-primary.active::before {
+    display: none;
+}
+
+.bottom-nav .nav-fab {
+    width: 48px;
+    height: 48px;
+    margin-top: -22px;
+    margin-bottom: 2px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: linear-gradient(160deg, #12b981 0%, var(--brand-green) 55%, #046c4e 100%);
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow:
+        0 8px 18px -6px rgba(5, 122, 85, 0.65),
+        0 0 0 1px rgba(5, 122, 85, 0.12);
+}
+
+.bottom-nav .nav-fab i {
+    font-size: 1.4rem;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.bottom-nav .nav-item.nav-primary.active .nav-fab {
+    box-shadow:
+        0 10px 22px -6px rgba(5, 122, 85, 0.7),
+        0 0 0 3px rgba(5, 122, 85, 0.14);
 }
 
 /* ---------- flash / alerts ---------- */
@@ -565,25 +621,42 @@ a {
 }
 
 .dash-sales {
+    position: relative;
     display: block;
+    overflow: hidden;
     margin-bottom: 10px;
-    padding: 14px 16px 12px;
-    color: var(--ink);
+    padding: 16px 16px 14px;
+    color: #fff;
+    border: 0;
+    border-radius: 22px;
     background:
-        linear-gradient(135deg, rgba(222, 247, 236, 0.55) 0%, rgba(255, 255, 255, 0.9) 42%, #fff 100%);
-    border: 1px solid #d5e8de;
-    border-radius: 18px;
-    box-shadow: var(--shadow-sm);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.22) 0, transparent 42%),
+        radial-gradient(circle at 0% 100%, rgba(14, 159, 110, 0.45) 0, transparent 50%),
+        linear-gradient(145deg, #045c40 0%, var(--brand-green) 48%, #0e9f6e 100%);
+    box-shadow: 0 10px 28px -10px rgba(5, 122, 85, 0.55), var(--shadow-sm);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dash-sales::after {
+    content: '';
+    position: absolute;
+    right: -40px;
+    bottom: -56px;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    pointer-events: none;
 }
 
 .dash-sales:hover {
-    color: var(--ink);
-    border-color: #b7dcc8;
-    box-shadow: 0 4px 14px -6px rgba(5, 122, 85, 0.18), var(--shadow-sm);
+    color: #fff;
+    box-shadow: 0 14px 32px -10px rgba(5, 122, 85, 0.6), var(--shadow-sm);
 }
 
 .dash-sales-main {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -603,25 +676,27 @@ a {
 }
 
 .dash-big {
-    font-size: 1.85rem;
+    font-size: 1.9rem;
     font-weight: 800;
     letter-spacing: -0.7px;
     line-height: 1.05;
     font-variant-numeric: tabular-nums;
-    color: var(--brand-green);
+    color: #fff;
 }
 
 .dash-sales-hero .dash-kicker {
     margin-top: 5px;
+    color: rgba(255, 255, 255, 0.78);
 }
 
 .dash-sales-side {
     text-align: right;
     flex: none;
-    padding: 6px 10px;
-    background: rgba(255, 255, 255, 0.72);
-    border: 1px solid var(--line);
+    padding: 7px 11px;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.28);
     border-radius: 12px;
+    backdrop-filter: blur(6px);
 }
 
 .dash-side-label {
@@ -630,7 +705,7 @@ a {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.72);
 }
 
 .dash-side-val {
@@ -638,21 +713,23 @@ a {
     font-weight: 800;
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
-    color: var(--ink);
+    color: #fff;
 }
 
 .dash-sales-row {
+    position: relative;
+    z-index: 1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0;
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 1px solid #dce8e1;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .dash-sales-row > div {
     padding: 0 10px;
-    border-right: 1px solid #dce8e1;
+    border-right: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .dash-sales-row > div:first-child {
@@ -671,7 +748,7 @@ a {
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.25px;
     line-height: 1.15;
-    color: var(--ink);
+    color: #fff;
 }
 
 .dash-sales-row span {
@@ -681,7 +758,7 @@ a {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.72);
     line-height: 1.25;
 }
 
@@ -1227,6 +1304,39 @@ a {
     border-radius: 14px;
 }
 
+.vendor-hub.is-paying .vendor-hub-list {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+}
+
+.vendor-hub.is-paying .vendor-hub-item.paying .vendor-hub-toggle {
+    cursor: default;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px 16px 0 0;
+    border-bottom: 0;
+}
+
+.vendor-hub.is-paying .vendor-hub-panel {
+    background: transparent;
+    border: 0;
+    padding: 0;
+}
+
+.vendor-hub.is-paying .vendor-pay-form {
+    margin-top: 0;
+    border-radius: 0 0 16px 16px;
+    border-top: 0;
+    padding-bottom: 8px;
+}
+
+.vendor-hub.is-paying .vendor-pay-save {
+    margin-left: -14px;
+    margin-right: -14px;
+    margin-bottom: -4px;
+}
+
 .vendor-pay-title {
     display: flex;
     align-items: center;
@@ -1751,14 +1861,12 @@ a {
 }
 
 .save-bar {
-    position: fixed;
-    left: 50%;
-    bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
-    z-index: 35;
-    width: 100%;
-    max-width: var(--shell-w);
+    position: sticky;
+    bottom: 0;
+    z-index: 25;
+    width: auto;
+    margin: 8px -14px -8px;
     padding: 10px 14px 12px;
-    transform: translateX(-50%);
     background: linear-gradient(180deg, rgba(243, 246, 252, 0) 0, rgba(243, 246, 252, 0.97) 28%);
 }
 
@@ -2659,21 +2767,19 @@ a.list-row:hover {
 @media (min-width: 520px) {
     body {
         padding: 18px 0;
+        overflow: auto;
     }
     .app-shell {
-        min-height: calc(100dvh - 36px);
+        height: calc(100dvh - 36px);
+        max-height: calc(100dvh - 36px);
         border-radius: 32px;
-        overflow: clip;
+        overflow: hidden;
     }
     .topbar {
         border-radius: 32px 32px 0 0;
     }
     .bottom-nav {
-        bottom: 18px;
         border-radius: 0 0 32px 32px;
-    }
-    .save-bar {
-        bottom: calc(var(--nav-h) + 18px);
     }
 }
 

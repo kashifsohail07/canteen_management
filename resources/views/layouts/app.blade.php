@@ -4,7 +4,7 @@
     @include('layouts.partials.head')
     @stack('head')
 </head>
-<body x-data="{ moreOpen: false }" @keydown.escape.window="moreOpen = false">
+<body class="app-body" x-data="{ moreOpen: false }" @keydown.escape.window="moreOpen = false">
 @php
     $user = auth()->user();
     $topDate = ($topDate ?? null) ?: now();
@@ -45,19 +45,24 @@
 
     <nav class="bottom-nav" aria-label="Main">
         <a href="{{ route('dashboard') }}" class="nav-item {{ $is('dashboard') ? 'active' : '' }}">
-            <i class="bi {{ $is('dashboard') ? 'bi-house-door-fill' : 'bi-house-door' }}"></i><span>Home</span>
+            <i class="bi {{ $is('dashboard') ? 'bi-house-door-fill' : 'bi-house-door' }}"></i>
+            <span>Home</span>
         </a>
         <a href="{{ route('sales.create') }}" class="nav-item {{ $is('sales.*') ? 'active' : '' }}">
-            <i class="bi {{ $is('sales.*') ? 'bi-cash-coin' : 'bi-cash-coin' }}"></i><span>Sale</span>
+            <i class="bi {{ $is('sales.*') ? 'bi-cash-stack' : 'bi-cash' }}"></i>
+            <span>Sale</span>
         </a>
         <a href="{{ route('purchases.create') }}" class="nav-item nav-primary {{ $is('purchases.*') ? 'active' : '' }}">
-            <i class="bi bi-plus-lg"></i><span>Bill</span>
+            <span class="nav-fab"><i class="bi bi-plus-lg"></i></span>
+            <span>Bill</span>
         </a>
         <a href="{{ route('payments.create') }}" class="nav-item {{ $is('payments.*') ? 'active' : '' }}">
-            <i class="bi bi-send"></i><span>Pay/Mall</span>
+            <i class="bi {{ $is('payments.*') ? 'bi-send-fill' : 'bi-send' }}"></i>
+            <span>Pay</span>
         </a>
-        <button type="button" class="nav-item {{ $is('vendors.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*') ? 'active' : '' }}" @click="moreOpen = true" aria-haspopup="dialog">
-            <i class="bi bi-grid-3x3-gap"></i><span>More</span>
+        <button type="button" class="nav-item {{ $is('vendors.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*', 'owner.*') ? 'active' : '' }}" @click="moreOpen = true" aria-haspopup="dialog">
+            <i class="bi {{ $is('vendors.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*', 'owner.*') ? 'bi-grid-fill' : 'bi-grid' }}"></i>
+            <span>More</span>
         </button>
     </nav>
 </div>
@@ -73,6 +78,7 @@
     <h3>Menu <small class="text-muted fw-normal fs-6">· {{ $user->name }} ({{ $user->role->label() }})</small></h3>
     <div class="sheet-grid">
         <a class="sheet-link" href="{{ route('vendors.index') }}"><i class="bi bi-people-fill"></i>Vendors</a>
+        <a class="sheet-link" href="{{ route('owner.index') }}"><i class="bi bi-person-badge-fill"></i>Owner / Pocket</a>
         <a class="sheet-link" href="{{ route('rent.pay') }}"><i class="bi bi-house-lock-fill"></i>Rent Pay</a>
         <a class="sheet-link" href="{{ route('closing.show') }}"><i class="bi bi-lock-fill"></i>Din Close</a>
         <a class="sheet-link" href="{{ route('reports.index') }}"><i class="bi bi-file-earmark-bar-graph-fill"></i>Reports</a>
