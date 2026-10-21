@@ -87,80 +87,178 @@ class ActivityController extends Controller
         };
     }
 
-    /** @return array<int, array{label: string, value: string}> */
+    /**
+     * Structured detail sections for the activity page.
+     *
+     * @return array{meta: list<array{label: string, value: string}>, sections: list<array{title: string, hint?: string, rows: list<array{label: string, value: string, emphasis?: bool}>, items?: list<array{name: string, calc: string, total: string}>}>}
+     */
     private function details(ActivityLog $activity, mixed $record): array
     {
-        $rows = [];
-        $add = function (string $label, mixed $value) use (&$rows) {
+        $meta = [];
+        $addMeta = function (string $label, mixed $value) use (&$meta) {
             if ($value !== null && $value !== '') {
-                $rows[] = ['label' => $label, 'value' => (string) $value];
+                $meta[] = ['label' => $label, 'value' => (string) $value];
             }
         };
 
-        $add('Waqt', $activity->recorded_at->format('d M Y, h:i A'));
-        $add('Din', $activity->dailySession->business_date->format('D, d M Y'));
-        $add('Entry karne wala', $activity->creator?->name);
+        $addMeta('Time', $activity->recorded_at->format('d M Y, h:i A'));
+        $addMeta('Business day', $activity->dailySession->business_date->format('D, d M Y'));
+        $addMeta('Entered by', $activity->creator?->name);
+
+        $sections = [];
 
         match (true) {
-            $record instanceof Purchase => (function () use ($record, $add) {
-                $add('Vendor', $record->vendor->name);
-                $add('Bill', Money::format($record->bill_amount));
-                $add('Paid', Money::format($record->paid_amount));
-                $add('Udhaar', Money::format(Money::sub($record->bill_amount, $record->paid_amount)));
-                $add('Payment source', $record->payment_source ? Labels::source($record->payment_source) : null);
-                $add('Pehla balance', Money::format($record->previous_balance));
-                $add('Naya balance', Money::format($record->new_balance));
+            $record instanceof Purchase => (function () use ($record, &$sections) {
+                $credit = Money::sub($record->bill_amount, $record->paid_amount);
+                $items = [];
                 foreach ($record->items as $item) {
-                    $add('Item: '.$item->item_name, rtrim(rtrim((string) $item->quantity, '0'), '.').' '.$item->unit.' × '.Money::format($item->rate).' = '.Money::format($item->line_total));
+                    $qty = rtrim(rtrim((string) $item->quantity, '0'), '.');
+                    $items[] = [
+                        'name' => $item->item_name,
+                        'calc' => $qty.' '.$item->unit.' × '.Money::format($item->rate),
+                        'total' => Money::format($item->line_total),
+                    ];
                 }
-                $add('Notes', $record->notes);
+
+                if ($items !== []) {
+                    $sections[] = [
+                        'title' => '1. Items purchased',
+                        'hint' => 'Line totals below add up to the bill amount.',
+                        'items' => $items,
+                        'rows' => [
+                            ['label' => 'Bill total', 'value' => Money::format($record->bill_amount), 'emphasis' => true],
+                        ],
+                    ];
+                } else {
+                    $sections[] = [
+                        'title' => '1. This bill',
+                        'rows' => [
+                            ['label' => 'Vendor', 'value' => $record->vendor->name],
+                            ['label' => 'Bill total', 'value' => Money::format($record->bill_amount), 'emphasis' => true],
+                        ],
+                    ];
+                }
+
+                $payRows = [
+                    ['label' => 'Vendor', 'value' => $record->vendor->name],
+                    ['label' => 'Paid now', 'value' => Money::format($record->paid_amount)],
+                    ['label' => 'On credit (added to balance)', 'value' => Money::format($credit), 'emphasis' => true],
+                ];
+                if ($record->payment_source) {
+                    $payRows[] = ['label' => 'Paid from', 'value' => Labels::source($record->payment_source)];
+                }
+                if ($record->notes) {
+                    $payRows[] = ['label' => 'Notes', 'value' => $record->notes];
+                }
+                $sections[] = [
+                    'title' => '2. Payment on this bill',
+                    'hint' => 'On credit = bill − paid now.',
+                    'rows' => $payRows,
+                ];
+
+                $sections[] = [
+                    'title' => '3. Vendor balance',
+                    'hint' => 'Balance after = balance before + on credit.',
+                    'rows' => [
+                        ['label' => 'Balance before', 'value' => Money::format($record->previous_balance)],
+                        ['label' => '+ On credit from this bill', 'value' => Money::format($credit)],
+                        ['label' => 'Balance after', 'value' => Money::format($record->new_balance), 'emphasis' => true],
+                    ],
+                ];
             })(),
-            $record instanceof Sale => (function () use ($record, $add) {
-                $add('Segment', $record->segment->name);
-                $add('Amount', Money::format($record->amount));
-                $add('Payment', $record->payment_method === 'rent_side'
-                    ? 'Rent Side (reserve)'
-                    : ucfirst($record->payment_method));
-                $add('Notes', $record->notes);
+            $record instanceof Sale => (function () use ($record, &$sections) {
+                $sections[] = [
+                    'title' => 'Sale',
+                    'rows' => array_values(array_filter([
+                        ['label' => 'Segment', 'value' => $record->segment->name],
+                        ['label' => 'Amount', 'value' => Money::format($record->amount), 'emphasis' => true],
+                        ['label' => 'Payment', 'value' => $record->payment_method === 'rent_side'
+                            ? 'Rent Side (reserve)'
+                            : ucfirst($record->payment_method)],
+                        $record->notes ? ['label' => 'Notes', 'value' => $record->notes] : null,
+                    ])),
+                ];
             })(),
-            $record instanceof VendorPayment => (function () use ($record, $add) {
-                $add('Vendor', $record->vendor->name);
-                $add('Amount', Money::format($record->amount));
-                $add('Source', Labels::source($record->payment_source));
-                $add('Pehla balance', Money::format($record->previous_balance));
-                $add('Naya balance', Money::format($record->new_balance));
-                $add('Notes', $record->notes);
+            $record instanceof VendorPayment => (function () use ($record, &$sections) {
+                $sections[] = [
+                    'title' => 'Payment',
+                    'rows' => array_values(array_filter([
+                        ['label' => 'Vendor', 'value' => $record->vendor->name],
+                        ['label' => 'Amount paid', 'value' => Money::format($record->amount), 'emphasis' => true],
+                        ['label' => 'Paid from', 'value' => Labels::source($record->payment_source)],
+                        $record->notes ? ['label' => 'Notes', 'value' => $record->notes] : null,
+                    ])),
+                ];
+                $sections[] = [
+                    'title' => 'Vendor balance',
+                    'hint' => 'Payment reduces what we owe.',
+                    'rows' => [
+                        ['label' => 'Balance before', 'value' => Money::format($record->previous_balance)],
+                        ['label' => 'This payment', 'value' => '− '.Money::format($record->amount)],
+                        ['label' => 'Balance after', 'value' => Money::format($record->new_balance), 'emphasis' => true],
+                    ],
+                ];
             })(),
-            $record instanceof Expense => (function () use ($record, $add) {
-                $add('Category', $record->category?->name);
-                $add('Amount', Money::format($record->amount));
-                $add('Source', Labels::source($record->payment_source));
-                $add('Notes', $record->notes);
+            $record instanceof Expense => (function () use ($record, &$sections) {
+                $sections[] = [
+                    'title' => 'Expense',
+                    'rows' => array_values(array_filter([
+                        ['label' => 'Category', 'value' => $record->category?->name],
+                        ['label' => 'Amount', 'value' => Money::format($record->amount), 'emphasis' => true],
+                        ['label' => 'Paid from', 'value' => Labels::source($record->payment_source)],
+                        $record->notes ? ['label' => 'Notes', 'value' => $record->notes] : null,
+                    ])),
+                ];
             })(),
-            $record instanceof OwnerTransaction => (function () use ($record, $add) {
-                $add('Qism', Labels::ownerTransaction($record->type));
-                $add('Amount', Money::format($record->amount));
-                $add('Owner ka baqaya', Money::format($record->balance_after));
-                $add('Notes', $record->notes);
+            $record instanceof OwnerTransaction => (function () use ($record, &$sections) {
+                $sections[] = [
+                    'title' => 'Owner ledger',
+                    'rows' => array_values(array_filter([
+                        ['label' => 'Type', 'value' => Labels::ownerTransaction($record->type)],
+                        ['label' => 'Amount', 'value' => Money::format($record->amount), 'emphasis' => true],
+                        ['label' => 'Owner recoverable after', 'value' => Money::format($record->balance_after)],
+                        $record->notes ? ['label' => 'Notes', 'value' => $record->notes] : null,
+                    ])),
+                ];
             })(),
-            $record instanceof RentReservation => (function () use ($record, $add) {
-                $add('Amount', Money::format($record->amount));
-                $add('Mahina', now()->setDate($record->rentObligation->year, $record->rentObligation->month, 1)->format('F Y'));
-                $add('Notes', $record->notes);
+            $record instanceof RentReservation => (function () use ($record, &$sections) {
+                $sections[] = [
+                    'title' => 'Rent reserve',
+                    'rows' => array_values(array_filter([
+                        ['label' => 'Amount', 'value' => Money::format($record->amount), 'emphasis' => true],
+                        ['label' => 'Month', 'value' => now()->setDate($record->rentObligation->year, $record->rentObligation->month, 1)->format('F Y')],
+                        $record->notes ? ['label' => 'Notes', 'value' => $record->notes] : null,
+                    ])),
+                ];
             })(),
-            $record instanceof RentPayment => (function () use ($record, $add) {
-                $add('Amount', Money::format($record->amount));
-                $add('Source', Labels::source($record->payment_source));
-                $add('Mahina', now()->setDate($record->rentObligation->year, $record->rentObligation->month, 1)->format('F Y'));
-                $add('Notes', $record->notes);
+            $record instanceof RentPayment => (function () use ($record, &$sections) {
+                $sections[] = [
+                    'title' => 'Rent payment',
+                    'rows' => array_values(array_filter([
+                        ['label' => 'Amount', 'value' => Money::format($record->amount), 'emphasis' => true],
+                        ['label' => 'Paid from', 'value' => Labels::source($record->payment_source)],
+                        ['label' => 'Month', 'value' => now()->setDate($record->rentObligation->year, $record->rentObligation->month, 1)->format('F Y')],
+                        $record->notes ? ['label' => 'Notes', 'value' => $record->notes] : null,
+                    ])),
+                ];
             })(),
-            default => $add('Detail', $activity->summary),
+            default => (function () use ($activity, &$sections) {
+                if ($activity->summary) {
+                    $sections[] = [
+                        'title' => 'Detail',
+                        'rows' => [['label' => 'Summary', 'value' => $activity->summary]],
+                    ];
+                }
+            })(),
         };
 
         if ($record && ($record->is_reversed ?? false)) {
-            $add('Status', 'REVERSED');
+            $sections[] = [
+                'title' => 'Status',
+                'rows' => [['label' => 'Status', 'value' => 'REVERSED', 'emphasis' => true]],
+            ];
         }
 
-        return $rows;
+        return ['meta' => $meta, 'sections' => $sections];
     }
 }

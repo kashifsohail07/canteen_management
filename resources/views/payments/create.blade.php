@@ -14,9 +14,21 @@
     $initialPay = ($showPay && $vendor) ? (int) $vendor->id : null;
 @endphp
 
+@php
+    $pdfVendors = $cards->map(fn ($c) => [
+        'id' => $c['id'],
+        'name' => $c['name'],
+        'balance' => Money::format(Money::abs($c['current'])),
+        'owed' => bccomp($c['current'], '0', 2),
+    ])->values();
+@endphp
+
 <div x-data="{
     openId: {{ $initialOpen ?? 'null' }},
     payId: {{ $initialPay ?? 'null' }},
+    pdfOpen: false,
+    pdfVendors: @js($pdfVendors),
+    selected: [],
     toggle(id) {
         if (this.payId) return;
         this.openId = this.openId === id ? null : id;
@@ -28,24 +40,74 @@
     },
     closePay() {
         this.payId = null;
+    },
+    openPdf() {
+        this.selected = this.pdfVendors.map(v => v.id);
+        this.pdfOpen = true;
+    },
+    closePdf() {
+        this.pdfOpen = false;
+    },
+    get allSelected() {
+        return this.pdfVendors.length > 0 && this.selected.length === this.pdfVendors.length;
+    },
+    toggleAll() {
+        this.selected = this.allSelected ? [] : this.pdfVendors.map(v => v.id);
+    },
+    toggleOne(id) {
+        if (this.selected.includes(id)) {
+            this.selected = this.selected.filter(x => x !== id);
+        } else {
+            this.selected.push(id);
+        }
+    },
+    downloadAll() {
+        window.location = @js(route('reports.vendors', ['format' => 'pdf', 'all' => 1]));
+        this.closePdf();
+    },
+    downloadSelected() {
+        if (!this.selected.length) return;
+        const base = @js(route('reports.vendors'));
+        const params = new URLSearchParams({ format: 'pdf', all: '0' });
+        this.selected.forEach(id => params.append('vendors[]', id));
+        window.location = base + '?' + params.toString();
+        this.closePdf();
     }
-}" @close-pay="closePay()" :class="{ 'is-paying': payId }" class="vendor-hub-page">
+}" @close-pay="closePay()" @keydown.escape.window="if (pdfOpen) closePdf()" :class="{ 'is-paying': payId }" class="vendor-hub-page">
 
     <div x-show="!payId">
         <x-page-header
             title="All Vendors"
-            :sub="$entryDate ? 'Date: '.\Illuminate\Support\Carbon::parse($entryDate)->format('d M Y') : 'Mall + payment only — opening balance: Menu → Vendors'"
+            :sub="$entryDate ? 'Date: '.\Illuminate\Support\Carbon::parse($entryDate)->format('d M Y') : 'Mall + payment'"
             :back="$back"
-        >
-            <a href="{{ route('vendors.index') }}" class="btn-xl btn-sm-x btn-ghost"><i class="bi bi-people"></i> Manage</a>
-        </x-page-header>
+        />
 
-        <div class="settle-cash-banner">
-            <div>
-                <div class="small text-muted">Cash in hand</div>
-                <div class="settle-cash-amount">{{ Money::format($cashInHand) }}</div>
+        @php($owedCmp = bccomp($vendorsTotal, '0', 2))
+        <div class="settle-cash-banner settle-vendors-total settle-vendors-full {{ $owedCmp > 0 ? 'is-owed' : ($owedCmp < 0 ? 'is-adv' : '') }}">
+            <div class="settle-vendors-main">
+                <div>
+                    <div class="small text-muted">All vendors total</div>
+                    <div class="settle-cash-amount">{{ Money::format(Money::abs($vendorsTotal)) }}</div>
+                    <div class="settle-stat-sub">
+                        {{ $owedCmp > 0 ? 'dena hai' : ($owedCmp < 0 ? 'advance' : 'clear') }}
+                        · {{ $cards->count() }} {{ $cards->count() === 1 ? 'vendor' : 'vendors' }}
+                    </div>
+                </div>
+                <i class="bi bi-people-fill"></i>
             </div>
-            <i class="bi bi-wallet2"></i>
+            <div class="settle-vendors-cash">
+                <span><i class="bi bi-wallet2"></i> Available cash</span>
+                <b>{{ Money::format($cashInHand) }}</b>
+            </div>
+        </div>
+
+        <div class="settle-toolbar">
+            <button type="button" class="settle-tool" @click="openPdf()" @if ($cards->isEmpty()) disabled @endif>
+                <i class="bi bi-file-earmark-pdf"></i> PDF Report
+            </button>
+            <a href="{{ route('vendors.index') }}" class="settle-tool">
+                <i class="bi bi-people"></i> Manage
+            </a>
         </div>
     </div>
 
@@ -221,5 +283,63 @@
         </div>
     </div>
 @endif
+
+    {{-- PDF report picker modal --}}
+    <div x-cloak x-show="pdfOpen" class="sheet-backdrop" @click="closePdf()"
+         x-transition:enter="fade-enter" x-transition:enter-start="fade-start" x-transition:enter-end="fade-end"
+         x-transition:leave="fade-enter" x-transition:leave-start="fade-end" x-transition:leave-end="fade-start"></div>
+    <div x-cloak x-show="pdfOpen" class="pdf-modal" role="dialog" aria-label="PDF Report"
+         @click.stop
+         x-transition:enter="sheet-enter" x-transition:enter-start="sheet-enter-start" x-transition:enter-end="sheet-enter-end"
+         x-transition:leave="sheet-enter" x-transition:leave-start="sheet-enter-end" x-transition:leave-end="sheet-enter-start">
+        <div class="pdf-modal-head">
+            <div>
+                <div class="pdf-modal-title"><i class="bi bi-file-earmark-pdf"></i> PDF Report</div>
+                <div class="pdf-modal-sub">All vendors ya selected vendors</div>
+            </div>
+            <button type="button" class="back-btn" @click="closePdf()" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <button type="button" class="pdf-all-btn" @click="downloadAll()">
+            <i class="bi bi-people-fill"></i>
+            <span>
+                <strong>All vendors report</strong>
+                <small>Har vendor ka balance PDF mein</small>
+            </span>
+            <i class="bi bi-download"></i>
+        </button>
+
+        <div class="pdf-modal-divider">ya select karo</div>
+
+        <div class="pdf-select-bar">
+            <label class="check-x mb-0">
+                <input type="checkbox" :checked="allSelected" @change="toggleAll()">
+                <span>Select all</span>
+            </label>
+            <span class="meta" x-text="selected.length + ' selected'"></span>
+        </div>
+
+        <div class="pdf-vendor-list">
+            <template x-for="v in pdfVendors" :key="v.id">
+                <label class="pdf-vendor-row">
+                    <input type="checkbox" :checked="selected.includes(v.id)" @change="toggleOne(v.id)">
+                    <span class="grow">
+                        <span class="name" x-text="v.name"></span>
+                        <span class="meta" x-text="v.balance + (v.owed > 0 ? ' · dena hai' : (v.owed < 0 ? ' · advance' : ' · clear'))"></span>
+                    </span>
+                </label>
+            </template>
+        </div>
+
+        <div class="pdf-modal-actions">
+            <button type="button" class="btn-xl btn-ghost" @click="closePdf()">Cancel</button>
+            <button type="button" class="btn-xl btn-save flex-fill"
+                    :disabled="!selected.length"
+                    :class="{ disabled: !selected.length }"
+                    @click="downloadSelected()">
+                <i class="bi bi-file-earmark-pdf"></i> Download selected
+            </button>
+        </div>
+    </div>
 </div>
 @endsection

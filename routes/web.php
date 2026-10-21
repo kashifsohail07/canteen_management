@@ -88,6 +88,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/daily', [ReportController::class, 'daily'])->name('reports.daily');
+    Route::get('/reports/vendors', [ReportController::class, 'vendors'])->name('reports.vendors');
     Route::get('/reports/vendor/{vendor}', [ReportController::class, 'vendor'])->name('reports.vendor');
     Route::get('/reports/monthly', [ReportController::class, 'monthly'])->name('reports.monthly');
 

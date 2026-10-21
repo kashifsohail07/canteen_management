@@ -24,7 +24,70 @@ class ReportService
     public function __construct(
         private DailyClosingService $closing,
         private DashboardService $dashboard,
+        private CashLedgerService $cash,
     ) {}
+
+    /**
+     * Snapshot of vendor balances for PDF.
+     *
+     * @param  list<int>|null  $vendorIds  null / empty = all active vendors
+     */
+    public function vendorsSummary(?array $vendorIds = null): array
+    {
+        $vendors = Vendor::query()
+            ->where('is_active', true)
+            ->when($vendorIds !== null && $vendorIds !== [], fn ($q) => $q->whereIn('id', $vendorIds))
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'opening_balance', 'current_balance']);
+
+        $rows = [];
+        $net = Money::zero();
+        $owed = Money::zero();
+        $advance = Money::zero();
+
+        foreach ($vendors as $vendor) {
+            $balance = Money::of($vendor->current_balance);
+            $net = Money::add($net, $balance);
+            $cmp = bccomp($balance, '0', 2);
+            if ($cmp > 0) {
+                $owed = Money::add($owed, $balance);
+            } elseif ($cmp < 0) {
+                $advance = Money::add($advance, Money::abs($balance));
+            }
+
+            $rows[] = [
+                'name' => $vendor->name,
+                'phone' => $vendor->phone ?: '—',
+                'opening' => Money::of($vendor->opening_balance),
+                'balance' => $balance,
+                'status' => $cmp > 0 ? 'Payable' : ($cmp < 0 ? 'Advance' : 'Cleared'),
+                'status_key' => $cmp > 0 ? 'payable' : ($cmp < 0 ? 'advance' : 'cleared'),
+            ];
+        }
+
+        $payableCount = collect($rows)->where('status_key', 'payable')->count();
+        $advanceCount = collect($rows)->where('status_key', 'advance')->count();
+        $clearedCount = collect($rows)->where('status_key', 'cleared')->count();
+
+        $filtered = $vendorIds !== null && $vendorIds !== [];
+
+        return [
+            'generated_at' => now(),
+            'cash_in_hand' => $this->cash->getBalances()['canteen_cash'],
+            'vendor_count' => $vendors->count(),
+            'rows' => $rows,
+            'total_owed' => $owed,
+            'total_advance' => $advance,
+            'net_total' => $net,
+            'payable_count' => $payableCount,
+            'advance_count' => $advanceCount,
+            'cleared_count' => $clearedCount,
+            'is_filtered' => $filtered,
+            'scope_label' => $filtered
+                ? ($vendors->count() === 1 ? 'Selected vendor' : 'Selected vendors ('.$vendors->count().')')
+                : 'All active vendors',
+        ];
+    }
 
     /** @return array<string, mixed> */
     public function daily(DailySession $session): array

@@ -140,6 +140,11 @@ class PaymentController extends Controller
             'phone' => $selected->phone,
         ] : null;
 
+        $vendorsTotal = Money::zero();
+        foreach ($cards as $card) {
+            $vendorsTotal = Money::add($vendorsTotal, $card['current']);
+        }
+
         return view('payments.create', [
             'cards' => $cards,
             'vendor' => $selected,
@@ -148,6 +153,7 @@ class PaymentController extends Controller
             'entryDate' => $this->entryDate($request),
             'topDate' => $date,
             'cashInHand' => $cash->getBalances()['canteen_cash'],
+            'vendorsTotal' => $vendorsTotal,
             'dateQuery' => $this->entryDate($request) ? ['date' => $this->entryDate($request)] : [],
         ]);
     }

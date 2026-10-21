@@ -87,6 +87,32 @@ class ReportController extends Controller
         };
     }
 
+    /** Vendor balances snapshot: pdf (default) or csv. Optional vendors[] filter. */
+    public function vendors(Request $request): Response
+    {
+        $request->validate([
+            'format' => ['nullable', 'in:pdf,csv'],
+            'vendors' => ['nullable', 'array'],
+            'vendors.*' => ['integer', 'exists:vendors,id'],
+            'all' => ['nullable', 'in:0,1,true,false'],
+        ]);
+
+        $wantAll = $request->boolean('all', ! $request->filled('vendors'));
+        $ids = array_values(array_unique(array_map('intval', $request->input('vendors', []))));
+
+        if (! $wantAll && $ids === []) {
+            abort(422, 'Select at least one vendor for the PDF report.');
+        }
+
+        $data = $this->reports->vendorsSummary($wantAll ? null : $ids);
+        $name = 'canteen-vendors-'.now()->toDateString();
+
+        return match ($request->query('format', 'pdf')) {
+            'csv' => $this->csv($name.'.csv', $this->vendorsCsv($data)),
+            default => Pdf::loadView('reports.pdf.vendors', $data)->setPaper('a4')->download($name.'.pdf'),
+        };
+    }
+
     /** @param  array<int, array<int, mixed>>  $rows */
     private function csv(string $filename, array $rows): Response
     {
@@ -175,6 +201,25 @@ class ReportController extends Controller
         $rows[] = ['Vendors', 'Bills', 'Paid', 'Balance now'];
         foreach ($d['vendors'] as $v) {
             $rows[] = [$v['name'], $v['bills'], $v['paid'], $v['balance']];
+        }
+
+        return $rows;
+    }
+
+    /** @return array<int, array<int, mixed>> */
+    private function vendorsCsv(array $d): array
+    {
+        $rows = [
+            ['Canteen Hisab – All Vendors', $d['generated_at']->format('Y-m-d H:i')],
+            ['Vendors', $d['vendor_count']],
+            ['Total payable', $d['total_owed']],
+            ['Total advance', $d['total_advance']],
+            ['Net position', $d['net_total']],
+            [],
+            ['Vendor', 'Phone', 'Opening', 'Balance', 'Status'],
+        ];
+        foreach ($d['rows'] as $r) {
+            $rows[] = [$r['name'], $r['phone'], $r['opening'], $r['balance'], $r['status']];
         }
 
         return $rows;

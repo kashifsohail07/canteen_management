@@ -19,6 +19,16 @@
     </div>
 </form>
 
+{{-- all vendors snapshot --}}
+<div class="card-x">
+    <div class="card-title"><i class="bi bi-people-fill"></i> All Vendors (balances)</div>
+    <div class="field-hint mb-2">Har vendor ka current balance + cash in hand — PDF / CSV.</div>
+    <div class="d-flex gap-2">
+        <a href="{{ route('reports.vendors', ['format' => 'pdf']) }}" class="btn-xl btn-sm-x btn-ghost flex-fill"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+        <a href="{{ route('reports.vendors', ['format' => 'csv']) }}" class="btn-xl btn-sm-x btn-outline-x flex-fill"><i class="bi bi-filetype-csv"></i> CSV</a>
+    </div>
+</div>
+
 {{-- vendor ledger --}}
 <form method="GET" class="card-x" x-data="{ vendor: '{{ $vendors->first()?->id }}' }" :action="'{{ url('reports/vendor') }}/' + vendor">
     <div class="card-title"><i class="bi bi-person-lines-fill"></i> Vendor Ledger</div>
