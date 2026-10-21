@@ -41,6 +41,8 @@ class DashboardService
                 $vendorsOwed = Money::add($vendorsOwed, $v->current_balance);
             });
 
+        $monthStats = $this->monthSalesStats($date->year, $date->month);
+
         return [
             'business_date' => $date->toDateString(),
             'status' => $session->status->value,
@@ -53,6 +55,10 @@ class DashboardService
             'purchases_today' => $day['purchases_total'],
             'expenses_today' => $day['expenses_total'],
             'expected_closing_cash' => $day['expected_closing_cash'],
+            'month_sales_total' => $monthStats['total'],
+            'month_sales_avg' => $monthStats['average'],
+            'month_days_with_sales' => $monthStats['days_with_sales'],
+            'month_label' => $date->format('M Y'),
             'rent' => [
                 'year' => $obligation->year,
                 'month' => $obligation->month,
@@ -61,6 +67,54 @@ class DashboardService
                 'paid_total' => Money::of($obligation->paid_total),
                 'remaining' => $obligation->remainingToPay(),
             ],
+        ];
+    }
+
+    /**
+     * Month-to-date sales (excl. Rent Side): total, days with sales, average per selling day.
+     *
+     * @return array{total: string, average: string, days_with_sales: int}
+     */
+    public function monthSalesStats(int $year, int $month): array
+    {
+        $start = sprintf('%04d-%02d-01', $year, $month);
+        $end = date('Y-m-t', strtotime($start));
+
+        $sessionIds = DailySession::whereBetween('business_date', [$start, $end])->pluck('id');
+        if ($sessionIds->isEmpty()) {
+            return [
+                'total' => Money::zero(),
+                'average' => Money::zero(),
+                'days_with_sales' => 0,
+            ];
+        }
+
+        $perDay = Sale::query()
+            ->whereIn('daily_session_id', $sessionIds)
+            ->where('is_reversed', false)
+            ->where('payment_method', '!=', 'rent_side')
+            ->selectRaw('daily_session_id, SUM(amount) as total')
+            ->groupBy('daily_session_id')
+            ->pluck('total', 'daily_session_id');
+
+        $total = Money::zero();
+        $daysWithSales = 0;
+        foreach ($perDay as $dayTotal) {
+            $amount = Money::of($dayTotal);
+            if (Money::isPositive($amount)) {
+                $total = Money::add($total, $amount);
+                $daysWithSales++;
+            }
+        }
+
+        $average = $daysWithSales > 0
+            ? Money::of(bcdiv($total, (string) $daysWithSales, 8))
+            : Money::zero();
+
+        return [
+            'total' => $total,
+            'average' => $average,
+            'days_with_sales' => $daysWithSales,
         ];
     }
 

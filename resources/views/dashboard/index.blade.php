@@ -45,6 +45,7 @@
         </div>
     </div>
 @else
+    {{-- 1. Daily cash --}}
     <section class="hero-cash" aria-label="Cash in hand">
         <div class="label"><i class="bi bi-wallet2"></i> {{ $isToday ? 'Cash in hand' : 'Closing cash' }}</div>
         <div class="amount" data-cash>{{ Money::format($cash) }}</div>
@@ -57,31 +58,67 @@
         </div>
     </section>
 
-    <div class="stat-grid">
-        <a class="stat tone-green" href="{{ route('reports.daily', ['date' => $date->toDateString()]) }}">
-            <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
-            <div class="stat-label">{{ $isToday ? 'Today’s sales' : 'Day’s sales' }}</div>
-            <div class="stat-value" data-sales>{{ Money::format($summary['sales_today']) }}</div>
-            <div class="stat-sub">Mall {{ Money::format($summary['purchases_today']) }}</div>
+    {{-- 2. Daily actions (top priority) --}}
+    <div class="dash-actions">
+        <a href="{{ route('sales.create', $q) }}" class="dash-action da-sale {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
+            <i class="bi bi-cash-coin"></i>
+            <span>Add Sale</span>
         </a>
-        <a class="stat tone-orange" href="{{ route('payments.create', $q) }}">
-            <div class="stat-icon"><i class="bi bi-people"></i></div>
-            <div class="stat-label">Vendors ko dena hai</div>
-            <div class="stat-value" data-vendors>{{ Money::format($summary['vendors_owed']) }}</div>
-            <div class="stat-sub">{{ $vendorCount }} {{ $vendorCount === 1 ? 'vendor' : 'vendors' }}</div>
+        <a href="{{ route('purchases.create', $q) }}" class="dash-action da-mall {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
+            <i class="bi bi-basket2-fill"></i>
+            <span>Add Mall</span>
         </a>
-        <a class="stat tone-blue stat-wide" href="{{ route('rent.create', $q) }}">
-            <div class="stat-wide-inner">
-                <div class="stat-icon"><i class="bi bi-house-lock"></i></div>
-                <div class="grow">
-                    <div class="stat-label">Rent side</div>
-                    <div class="stat-value" data-rent>{{ Money::format($summary['rent_reserve']) }}</div>
-                </div>
-                <div class="stat-sub text-end">
-                    Paid {{ Money::format($summary['rent']['paid_total']) }}
-                    <div class="text-muted">of {{ Money::format($summary['rent']['target']) }}</div>
-                </div>
+        <a href="{{ route('payments.create', $q) }}" class="dash-action da-pay {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
+            <i class="bi bi-send-fill"></i>
+            <span>Pay Vendor</span>
+        </a>
+    </div>
+
+    <div class="dash-tools">
+        <a href="{{ route('closing.show', $q) }}"><i class="bi bi-lock"></i> Close Day</a>
+        <a href="{{ route('reports.index') }}"><i class="bi bi-bar-chart"></i> Reports</a>
+        <a href="{{ route('vendors.index') }}"><i class="bi bi-people"></i> Vendors</a>
+    </div>
+
+    {{-- 3. Today sales snapshot --}}
+    <a class="dash-sales" href="{{ route('reports.daily', ['date' => $date->toDateString()]) }}">
+        <div class="dash-sales-main">
+            <div>
+                <div class="dash-kicker">{{ $isToday ? 'Today’s sales' : 'Day’s sales' }}</div>
+                <div class="dash-big" data-sales>{{ Money::format($summary['sales_today']) }}</div>
             </div>
+            <div class="dash-sales-side">
+                <div class="dash-side-label">Mall</div>
+                <div class="dash-side-val">{{ Money::format($summary['purchases_today']) }}</div>
+            </div>
+        </div>
+        <div class="dash-sales-row">
+            <div>
+                <span>20% of sale</span>
+                <strong>{{ Money::format(Money::mul($summary['sales_today'], '0.20')) }}</strong>
+            </div>
+            <div>
+                <span>{{ $summary['month_label'] }} avg</span>
+                <strong>{{ Money::format($summary['month_sales_avg']) }}</strong>
+            </div>
+            <div>
+                <span>Month total · {{ $summary['month_days_with_sales'] }}d</span>
+                <strong>{{ Money::format($summary['month_sales_total']) }}</strong>
+            </div>
+        </div>
+    </a>
+
+    {{-- 4. Overview (secondary) --}}
+    <div class="dash-overview">
+        <a class="dash-mini dm-owed" href="{{ route('payments.create', $q) }}">
+            <span class="dash-kicker">Vendors ko dena hai</span>
+            <strong data-vendors>{{ Money::format($summary['vendors_owed']) }}</strong>
+            <small>{{ $vendorCount }} {{ $vendorCount === 1 ? 'vendor' : 'vendors' }}</small>
+        </a>
+        <a class="dash-mini dm-rent" href="{{ route('rent.create', $q) }}">
+            <span class="dash-kicker">Rent side</span>
+            <strong data-rent>{{ Money::format($summary['rent_reserve']) }}</strong>
+            <small>Paid {{ Money::format($summary['rent']['paid_total']) }} / {{ Money::format($summary['rent']['target']) }}</small>
         </a>
     </div>
 
@@ -98,29 +135,6 @@
             @endforeach
         </div>
     @endif
-
-    <div class="section-title section-tight">
-        <span>Quick actions</span>
-    </div>
-    <div class="action-grid action-grid-3">
-        <a href="{{ route('sales.create', $q) }}" class="action-tile tile-green {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
-            <i class="bi bi-cash-coin"></i>
-            <span>Add Sale</span>
-        </a>
-        <a href="{{ route('purchases.create', $q) }}" class="action-tile tile-blue {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
-            <i class="bi bi-basket2-fill"></i>
-            <span>Add Mall</span>
-        </a>
-        <a href="{{ route('payments.create', $q) }}" class="action-tile tile-red {{ $canEnter ? '' : 'is-disabled' }}" @unless ($canEnter) aria-disabled="true" tabindex="-1" @endunless>
-            <i class="bi bi-send-fill"></i>
-            <span>Pay / Mall</span>
-        </a>
-    </div>
-
-    <div class="chip-row chip-row-2">
-        <a class="chip-link" href="{{ route('closing.show', $q) }}"><i class="bi bi-lock"></i>Close Day</a>
-        <a class="chip-link" href="{{ route('reports.index') }}"><i class="bi bi-bar-chart"></i>Reports</a>
-    </div>
 
     @if ($vendorCount === 0)
         <div class="card-x text-center">

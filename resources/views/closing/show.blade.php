@@ -129,23 +129,101 @@
             @endphp
 
             @if ($hasGaps)
+                @php
+                    $reasonOptions = \App\Services\DailyClosingService::EMPTY_FIELD_REASONS;
+                    $otherKey = \App\Services\DailyClosingService::OTHER_REASON;
+                @endphp
                 <div class="card-x mb-3">
-                    <div class="card-title"><i class="bi bi-exclamation-circle text-warning"></i> Khali fields — wajah zaroori</div>
-                    <div class="field-hint mb-3">Jin segments / Rent Side pe aaj value nahi, unki wajah likhein — tabhi din close hoga.</div>
+                    <div class="card-title"><i class="bi bi-exclamation-circle text-warning"></i> Khali fields</div>
+                    <div class="field-hint mb-3">Sale amount likho (save din close pe hoga) — ya phir reason chunein.</div>
 
                     @foreach ($gaps['segments'] as $gap)
-                        <div class="field">
-                            <label for="seg_reason_{{ $gap['segment_id'] }}">
-                                {{ $gap['name'] }} <span class="badge-soft red">Rs. 0</span>
-                            </label>
-                            <input type="text" id="seg_reason_{{ $gap['segment_id'] }}"
-                                   name="segment_reasons[{{ $gap['segment_id'] }}]"
-                                   class="form-control-x" maxlength="500" required
-                                   value="{{ old('segment_reasons.'.$gap['segment_id']) }}"
-                                   placeholder="Kyun entry nahi? jaise: holiday / sale kam">
-                            @error('segment_reasons.'.$gap['segment_id'])
-                                <div class="field-error">{{ $message }}</div>
-                            @enderror
+                        @php
+                            $sid = $gap['segment_id'];
+                            $oldAmount = old('segment_amounts.'.$sid, '');
+                            $oldChoice = old('segment_reasons.'.$sid);
+                            $oldOther = old('segment_reason_other.'.$sid, '');
+                            $isOther = $oldChoice === $otherKey
+                                || ($oldChoice && ! in_array($oldChoice, $reasonOptions, true));
+                            $initialChoice = $isOther ? $otherKey : ($oldChoice ?: '');
+                            $initialOther = $isOther && $oldChoice !== $otherKey ? (string) $oldChoice : (string) $oldOther;
+                            $hasAmount = $oldAmount !== null && $oldAmount !== '' && (float) $oldAmount > 0;
+                        @endphp
+                        <div class="close-gap-card" x-data="{
+                            mode: @js($hasAmount ? 'sale' : 'reason'),
+                            amount: @js((string) $oldAmount),
+                            choice: @js($initialChoice),
+                            otherText: @js($initialOther),
+                            n(v) { const x = parseFloat(String(v).replace(/,/g,'')); return isNaN(x) ? 0 : x; },
+                            pick(v) {
+                                this.choice = v;
+                                if (v === '{{ $otherKey }}') this.$nextTick(() => this.$refs.other?.focus());
+                            },
+                            backToList() { this.choice = ''; this.otherText = ''; }
+                        }">
+                            <div class="close-gap-head">
+                                <div class="fw-bold">{{ $gap['name'] }} <span class="badge-soft red">Rs. 0</span></div>
+                                <div class="pill-group blue close-gap-toggle">
+                                    <label class="m-0">
+                                        <input type="radio" :name="'gap_mode_'+{{ $sid }}" value="sale" x-model="mode">
+                                        <span class="pill" style="min-height:36px;font-size:0.8rem">Sale amount</span>
+                                    </label>
+                                    <label class="m-0">
+                                        <input type="radio" :name="'gap_mode_'+{{ $sid }}" value="reason" x-model="mode">
+                                        <span class="pill" style="min-height:36px;font-size:0.8rem">Reason</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div x-show="mode === 'sale'" x-cloak>
+                                <div class="money-field compact">
+                                    <span class="prefix">Rs.</span>
+                                    <input type="text" inputmode="decimal" class="form-control-x"
+                                           name="segment_amounts[{{ $sid }}]"
+                                           x-model="amount"
+                                           data-money="positive"
+                                           placeholder="0"
+                                           autocomplete="off"
+                                           :disabled="mode !== 'sale'">
+                                </div>
+                                <div class="field-hint mb-0 mt-1">Din close pe yeh sale save ho jayegi.</div>
+                            </div>
+
+                            <div x-show="mode === 'reason'">
+                                <div x-show="choice !== '{{ $otherKey }}'">
+                                    <select name="segment_reasons[{{ $sid }}]"
+                                            class="form-select-x"
+                                            :required="mode === 'reason' && choice !== '{{ $otherKey }}'"
+                                            :disabled="mode !== 'reason' || choice === '{{ $otherKey }}'"
+                                            @change="pick($event.target.value)">
+                                        <option value="" disabled {{ $initialChoice === '' ? 'selected' : '' }}>Reason</option>
+                                        @foreach ($reasonOptions as $opt)
+                                            <option value="{{ $opt }}" @selected($initialChoice === $opt)>{{ $opt }}</option>
+                                        @endforeach
+                                        <option value="{{ $otherKey }}">Other</option>
+                                    </select>
+                                </div>
+                                <div class="reason-other-wrap" x-show="choice === '{{ $otherKey }}'" x-cloak>
+                                    <input type="hidden" name="segment_reasons[{{ $sid }}]" value="{{ $otherKey }}"
+                                           :disabled="mode !== 'reason' || choice !== '{{ $otherKey }}'">
+                                    <input type="text"
+                                           name="segment_reason_other[{{ $sid }}]"
+                                           class="form-control-x"
+                                           maxlength="500"
+                                           placeholder="Reason likhein…"
+                                           x-ref="other"
+                                           x-model="otherText"
+                                           :required="mode === 'reason' && choice === '{{ $otherKey }}'"
+                                           :disabled="mode !== 'reason' || choice !== '{{ $otherKey }}'">
+                                    <button type="button" class="reason-other-back" @click="backToList()" aria-label="Back to list">
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            @error('segment_amounts.'.$sid)<div class="field-error">{{ $message }}</div>@enderror
+                            @error('segment_reasons.'.$sid)<div class="field-error">{{ $message }}</div>@enderror
+                            @error('segment_reason_other.'.$sid)<div class="field-error">{{ $message }}</div>@enderror
                         </div>
                     @endforeach
 

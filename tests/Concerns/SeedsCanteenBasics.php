@@ -134,7 +134,7 @@ trait SeedsCanteenBasics
         ], $extra);
 
         foreach (SaleSegment::where('is_active', true)->pluck('id') as $id) {
-            $payload['segment_reasons'][$id] ??= 'Test: no sale in segment';
+            $payload['segment_reasons'][$id] ??= \App\Services\DailyClosingService::EMPTY_FIELD_REASONS[0];
         }
 
         return $payload;

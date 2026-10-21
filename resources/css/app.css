@@ -463,6 +463,239 @@ a {
     font-size: 1.15rem;
 }
 
+/* ---------- dashboard home (daily-first) ---------- */
+
+.dash-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.dash-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 86px;
+    padding: 12px 8px;
+    color: #fff;
+    border-radius: 16px;
+    font-weight: 800;
+    font-size: 0.82rem;
+    text-align: center;
+    box-shadow: 0 8px 18px -10px rgba(16, 24, 40, 0.45);
+    transition: transform 0.1s ease;
+}
+
+.dash-action i {
+    font-size: 1.45rem;
+    line-height: 1;
+}
+
+.dash-action:hover {
+    color: #fff;
+}
+
+.dash-action:active {
+    transform: scale(0.97);
+}
+
+.dash-action.is-disabled {
+    filter: grayscale(0.85);
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.da-sale {
+    background: linear-gradient(145deg, #12b981, #057a55);
+}
+
+.da-mall {
+    background: linear-gradient(145deg, #3b82f6, #1a56db);
+}
+
+.da-pay {
+    background: linear-gradient(145deg, #f05252, #c81e1e);
+}
+
+.dash-tools {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.dash-tools a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 42px;
+    padding: 8px 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.dash-tools a:hover {
+    color: var(--brand-blue);
+    border-color: #c9d6ef;
+}
+
+.dash-sales {
+    display: block;
+    margin-bottom: 10px;
+    padding: 16px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow-sm);
+}
+
+.dash-sales:hover {
+    color: var(--ink);
+    border-color: #c9d6ef;
+}
+
+.dash-sales-main {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.dash-kicker {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+}
+
+.dash-big {
+    margin-top: 4px;
+    font-size: 1.7rem;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    color: var(--brand-green);
+}
+
+.dash-sales-side {
+    text-align: right;
+    flex: none;
+}
+
+.dash-side-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+}
+
+.dash-side-val {
+    margin-top: 2px;
+    font-size: 1rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-sales-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+}
+
+.dash-sales-row > div {
+    padding: 0 10px;
+    border-right: 1px solid var(--line);
+}
+
+.dash-sales-row > div:first-child {
+    padding-left: 0;
+}
+
+.dash-sales-row > div:last-child {
+    padding-right: 0;
+    border-right: 0;
+}
+
+.dash-sales-row span {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+    line-height: 1.2;
+}
+
+.dash-sales-row strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.92rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.2px;
+    color: var(--ink);
+}
+
+.dash-overview {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.dash-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.dash-mini:hover {
+    color: var(--ink);
+    border-color: #c9d6ef;
+}
+
+.dash-mini strong {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-mini small {
+    font-size: 0.72rem;
+    color: var(--muted);
+}
+
+.dm-owed strong {
+    color: var(--balance-orange);
+}
+
+.dm-rent strong {
+    color: var(--brand-blue);
+}
+
 .tone-green .stat-icon {
     color: var(--brand-green);
     background: var(--brand-green-soft);
@@ -1580,6 +1813,57 @@ textarea.form-control-x {
     background-position: right 14px center;
     background-size: 14px;
     padding-right: 38px;
+}
+
+.close-gap-card {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.close-gap-card:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.close-gap-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.close-gap-toggle {
+    flex: none;
+}
+
+.reason-other-wrap {
+    position: relative;
+}
+
+.reason-other-wrap .form-control-x {
+    padding-right: 46px;
+}
+
+.reason-other-back {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    background: transparent;
+    border: 0;
+    border-radius: 10px;
+}
+
+.reason-other-back:hover {
+    color: var(--brand-blue);
+    background: var(--brand-blue-soft);
 }
 
 .form-control-x:focus,

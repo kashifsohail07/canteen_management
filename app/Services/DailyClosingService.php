@@ -25,6 +25,16 @@ use Illuminate\Validation\ValidationException;
 
 class DailyClosingService
 {
+    /** Preset reasons when a sale segment / Rent Side has Rs. 0 for the day. */
+    public const EMPTY_FIELD_REASONS = [
+        'sale nahi thi',
+        'canteen bnd thi',
+        'No Cash',
+        '0',
+    ];
+
+    public const OTHER_REASON = 'other';
+
     private const ADJUSTMENT_REF = 'closing_adjustment';
 
     public function __construct(
@@ -32,6 +42,7 @@ class DailyClosingService
         private ActivityLogService $activity,
         private AuditService $audit,
         private SettingService $settings,
+        private SaleService $sales,
     ) {}
 
     /**
@@ -73,9 +84,50 @@ class DailyClosingService
     }
 
     /**
+     * Record sale amounts entered on the day-close screen for empty segments.
+     *
+     * @param  array<int|string, string|int|float|null>  $amounts
+     */
+    private function recordCloseScreenSales(DailySession $session, array $amounts, User $user): void
+    {
+        if ($amounts === []) {
+            return;
+        }
+
+        $gaps = collect($this->checklistGaps($session)['segments'])->keyBy('segment_id');
+        $date = $session->business_date->toDateString();
+
+        foreach ($amounts as $segId => $raw) {
+            if ($raw === null || $raw === '') {
+                continue;
+            }
+            $amount = Money::of(is_string($raw) ? str_replace([',', ' '], '', trim($raw)) : $raw);
+            if (! Money::isPositive($amount)) {
+                continue;
+            }
+            if (! $gaps->has((int) $segId)) {
+                continue; // already has a sale / not a gap
+            }
+
+            $this->sales->record([
+                'sale_segment_id' => (int) $segId,
+                'amount' => $amount,
+                'payment_method' => 'cash',
+                'business_date' => $date,
+                'notes' => 'Added on day close',
+                'idempotency_key' => 'close-sale-'.$session->id.'-'.$segId.'-'.$amount,
+            ], $user);
+        }
+    }
+
+    /**
      * Validate + normalise close checklist reasons for empty segments / missing rent.
      *
-     * @param  array{segment_reasons?: array<int|string, string>, rent_reason?: ?string}  $input
+     * @param  array{
+     *     segment_reasons?: array<int|string, string>,
+     *     segment_reason_other?: array<int|string, string>,
+     *     rent_reason?: ?string
+     * }  $input
      * @return array{segments: array<string, string>, rent: ?string}
      */
     public function validateChecklist(DailySession $session, array $input): array
@@ -84,15 +136,36 @@ class DailyClosingService
         $errors = [];
         $segmentReasons = [];
 
+        $allowed = self::EMPTY_FIELD_REASONS;
+
         foreach ($gaps['segments'] as $gap) {
             $id = (string) $gap['segment_id'];
-            $reason = trim((string) ($input['segment_reasons'][$gap['segment_id']]
+
+            // Sale amount already recorded for this gap — no reason needed.
+            $amountRaw = $input['segment_amounts'][$gap['segment_id']]
+                ?? $input['segment_amounts'][$id]
+                ?? null;
+            if ($amountRaw !== null && $amountRaw !== '' && Money::isPositive(Money::of($amountRaw))) {
+                continue;
+            }
+
+            $choice = trim((string) ($input['segment_reasons'][$gap['segment_id']]
                 ?? $input['segment_reasons'][$id]
                 ?? ''));
-            if (strlen($reason) < 3) {
-                $errors["segment_reasons.{$id}"] = "\"{$gap['name']}\" ki entry nahi — wajah likhein (kam az kam 3 characters).";
+
+            if ($choice === self::OTHER_REASON) {
+                $reason = trim((string) ($input['segment_reason_other'][$gap['segment_id']]
+                    ?? $input['segment_reason_other'][$id]
+                    ?? ''));
+                if (strlen($reason) < 2) {
+                    $errors["segment_reason_other.{$id}"] = "\"{$gap['name']}\" ke liye apni wajah likhein.";
+                } else {
+                    $segmentReasons[$id] = $reason;
+                }
+            } elseif ($choice === '' || ! in_array($choice, $allowed, true)) {
+                $errors["segment_reasons.{$id}"] = "\"{$gap['name']}\" — sale amount likho ya wajah chunein.";
             } else {
-                $segmentReasons[$id] = $reason;
+                $segmentReasons[$id] = $choice;
             }
         }
 
@@ -201,7 +274,12 @@ class DailyClosingService
      * Close the day: empty sale segments / missing rent need reasons; counted cash mismatch needs a reason;
      * then post an adjustment so canteen cash equals counted cash and lock the session.
      *
-     * @param  array{segment_reasons?: array<int|string, string>, rent_reason?: ?string}  $checklistInput
+     * @param  array{
+     *     segment_reasons?: array<int|string, string>,
+     *     segment_reason_other?: array<int|string, string>,
+     *     segment_amounts?: array<int|string, string|int|float|null>,
+     *     rent_reason?: ?string
+     * }  $checklistInput
      */
     public function close(
         DailySession $session,
@@ -215,19 +293,18 @@ class DailyClosingService
             throw ValidationException::withMessages(['actual_counted_cash' => 'Counted cash cannot be negative.']);
         }
         $reason = $reason !== null ? trim($reason) : null;
-        $checklist = $this->validateChecklist($session, $checklistInput);
 
-        return DB::transaction(function () use ($session, $actual, $reason, $user, $checklist) {
+        return DB::transaction(function () use ($session, $actual, $reason, $user, $checklistInput) {
             $locked = DailySession::whereKey($session->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== DailySessionStatus::Open) {
                 throw ValidationException::withMessages(['business_date' => 'This day is already closed.']);
             }
 
-            // Re-check gaps under lock (entries may have changed).
-            $checklist = $this->validateChecklist($locked, [
-                'segment_reasons' => $checklist['segments'],
-                'rent_reason' => $checklist['rent'],
-            ]);
+            // Late sales from the close screen (empty segments filled with amount).
+            $this->recordCloseScreenSales($locked, $checklistInput['segment_amounts'] ?? [], $user);
+
+            // Re-check gaps under lock after any late sales.
+            $checklist = $this->validateChecklist($locked, $checklistInput);
 
             if ($checklist['rent'] !== null) {
                 $alreadySkipped = ActivityLog::where('daily_session_id', $locked->id)
