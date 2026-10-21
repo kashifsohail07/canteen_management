@@ -8,6 +8,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\OwnerController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RentController;
 use App\Http\Controllers\ReportController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleSegmentController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\SetupController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\VendorSearchController;
 use Illuminate\Support\Facades\Route;
@@ -36,6 +38,10 @@ Route::middleware('guest')->group(function () {
 */
 Route::middleware(['auth', 'active'])->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+    // Profile (any active user)
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
     // Dashboard + activity feed
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
@@ -117,9 +123,16 @@ Route::middleware(['auth', 'active', 'admin'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Super User only — edit posted sales (and later other entries)
+| Super User only — user management + edit posted sales
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'active', 'super_user'])->group(function () {
     Route::put('/sales/{sale}', [SaleController::class, 'update'])->name('sales.update');
+
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store');
+    Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+    Route::post('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle-active');
 });

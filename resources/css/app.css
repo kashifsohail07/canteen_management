@@ -2638,6 +2638,57 @@ a.list-row:hover {
     text-align: right;
 }
 
+/* ---------- role guide / profile ---------- */
+
+.role-guide {
+    display: grid;
+    gap: 10px;
+}
+
+.role-guide-card {
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.role-guide-card.is-mine {
+    border-color: #93c5fd;
+    background: linear-gradient(180deg, #eff6ff 0%, #fff 55%);
+}
+
+.role-guide-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.role-guide-head strong {
+    font-size: 0.98rem;
+}
+
+.role-guide-desc {
+    margin: 0 0 8px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.35;
+}
+
+.role-guide-list {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    line-height: 1.45;
+}
+
+.role-guide-list li + li {
+    margin-top: 2px;
+}
+
 /* ---------- login ---------- */
 
 .login-wrap {

@@ -60,8 +60,8 @@
             <i class="bi {{ $is('payments.*') ? 'bi-send-fill' : 'bi-send' }}"></i>
             <span>Pay</span>
         </a>
-        <button type="button" class="nav-item {{ $is('vendors.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*', 'owner.*') ? 'active' : '' }}" @click="moreOpen = true" aria-haspopup="dialog">
-            <i class="bi {{ $is('vendors.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*', 'owner.*') ? 'bi-grid-fill' : 'bi-grid' }}"></i>
+        <button type="button" class="nav-item {{ $is('vendors.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*', 'owner.*', 'users.*', 'profile.*') ? 'active' : '' }}" @click="moreOpen = true" aria-haspopup="dialog">
+            <i class="bi {{ $is('vendors.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*', 'owner.*', 'users.*', 'profile.*') ? 'bi-grid-fill' : 'bi-grid' }}"></i>
             <span>More</span>
         </button>
     </nav>
@@ -77,6 +77,7 @@
     <div class="grabber"></div>
     <h3>Menu <small class="text-muted fw-normal fs-6">· {{ $user->name }} ({{ $user->role->label() }})</small></h3>
     <div class="sheet-grid">
+        <a class="sheet-link" href="{{ route('profile.edit') }}"><i class="bi bi-person-circle"></i>My Profile</a>
         <a class="sheet-link" href="{{ route('vendors.index') }}"><i class="bi bi-people-fill"></i>Vendors</a>
         <a class="sheet-link" href="{{ route('owner.index') }}"><i class="bi bi-person-badge-fill"></i>Owner / Pocket</a>
         <a class="sheet-link" href="{{ route('rent.pay') }}"><i class="bi bi-house-lock-fill"></i>Rent Pay</a>
@@ -85,6 +86,9 @@
         @if ($user->isAdmin())
             <a class="sheet-link" href="{{ route('segments.index') }}"><i class="bi bi-ui-checks-grid"></i>Segments</a>
             <a class="sheet-link" href="{{ route('settings.edit') }}"><i class="bi bi-gear-fill"></i>Settings</a>
+        @endif
+        @if ($user->isSuperUser())
+            <a class="sheet-link" href="{{ route('users.index') }}"><i class="bi bi-people-fill"></i>Users</a>
         @endif
         <form method="POST" action="{{ route('logout') }}" class="m-0">
             @csrf
