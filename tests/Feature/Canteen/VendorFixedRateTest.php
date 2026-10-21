@@ -63,8 +63,8 @@ class VendorFixedRateTest extends TestCase
 
         $this->actingAs($this->admin)->put(route('vendors.update', $vendor), [
             'name' => 'Roll Wala',
+            'uses_quantity' => '1',
             'default_item_name' => 'Roll',
-            'default_unit' => 'pcs',
             'default_rate' => '20',
             'is_active' => '1',
         ])->assertRedirect(route('vendors.show', $vendor));
@@ -73,5 +73,48 @@ class VendorFixedRateTest extends TestCase
         $this->assertTrue($vendor->hasFixedRate());
         $this->assertMoney(20, $vendor->default_rate);
         $this->assertSame('Roll', $vendor->default_item_name);
+    }
+
+    public function test_create_quantity_vendor_requires_per_pcs_price(): void
+    {
+        $this->actingAs($this->admin)->post(route('vendors.store'), [
+            'name' => 'Samosay New',
+            'uses_quantity' => '1',
+            'default_item_name' => 'Samosay',
+            'opening_balance' => '0',
+            'balance_type' => 'owed',
+        ])->assertSessionHasErrors('default_rate');
+    }
+
+    public function test_create_quantity_vendor_saves_fixed_rate(): void
+    {
+        $this->actingAs($this->admin)->post(route('vendors.store'), [
+            'name' => 'Samosay New',
+            'uses_quantity' => '1',
+            'default_item_name' => 'Samosay',
+            'default_rate' => '20',
+            'opening_balance' => '0',
+            'balance_type' => 'owed',
+        ])->assertRedirect();
+
+        $vendor = \App\Models\Vendor::where('name', 'Samosay New')->first();
+        $this->assertNotNull($vendor);
+        $this->assertTrue($vendor->hasFixedRate());
+        $this->assertMoney(20, $vendor->default_rate);
+        $this->assertSame('pcs', $vendor->default_unit);
+    }
+
+    public function test_create_without_quantity_checkbox_has_no_fixed_rate(): void
+    {
+        $this->actingAs($this->admin)->post(route('vendors.store'), [
+            'name' => 'Pepsi Only',
+            'opening_balance' => '1000',
+            'balance_type' => 'owed',
+        ])->assertRedirect();
+
+        $vendor = \App\Models\Vendor::where('name', 'Pepsi Only')->first();
+        $this->assertNotNull($vendor);
+        $this->assertFalse($vendor->hasFixedRate());
+        $this->assertNull($vendor->default_rate);
     }
 }

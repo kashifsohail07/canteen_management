@@ -202,8 +202,19 @@ Alpine.data('txnForm', (cfg = {}) => ({
     },
     setVendor(v) {
         this.vendor = v;
-        if (v && this.items.length === 1) {
-            this.items[0] = this.applyVendorDefaults(this.items[0]);
+        if (!v) {
+            this.todayLines = [];
+            return;
+        }
+        if (v.rate_fixed && num(v.default_rate) > 0) {
+            this.entryMode = 'itemized';
+            this.items = [this.applyVendorDefaults({ quantity: '' })];
+            this.bill = '';
+            this.$nextTick(() => document.getElementById('qty_0')?.focus());
+        } else {
+            this.entryMode = 'total';
+            this.items = [{ item_name: '', quantity: '', unit: 'pcs', rate: '' }];
+            this.$nextTick(() => document.getElementById('bill_amount')?.focus());
         }
         this.loadTodayDeliveries();
     },

@@ -14,12 +14,24 @@
         'balance' => Money::of($vendor->current_balance),
         'balance_formatted' => Money::format($vendor->current_balance),
         'phone' => $vendor->phone,
+        'default_item_name' => $vendor->default_item_name,
+        'default_unit' => $vendor->default_unit,
+        'default_rate' => $vendor->default_rate !== null ? Money::of($vendor->default_rate) : null,
+        'rate_fixed' => $vendor->hasFixedRate(),
     ] : null;
+    $isQtyVendor = (bool) ($vendorData['rate_fixed'] ?? false);
+    $defaultMode = old('entry_mode', $isQtyVendor ? 'itemized' : 'total');
+    $oldItems = old('items', $isQtyVendor ? [[
+        'item_name' => $vendor->default_item_name ?: $vendor->name,
+        'quantity' => '',
+        'unit' => $vendor->default_unit ?: 'pcs',
+        'rate' => Money::of($vendor->default_rate),
+    ]] : []);
 @endphp
 
 <x-page-header
     title="Add Mall"
-    :sub="$entryDate ? 'Date: '.\Illuminate\Support\Carbon::parse($entryDate)->format('d M Y') : 'Select a vendor, then enter the bill amount'"
+    :sub="$entryDate ? 'Date: '.\Illuminate\Support\Carbon::parse($entryDate)->format('d M Y') : 'Qty vendor: pcs likho · baaki: bill amount'"
     :back="$back"
 />
 
@@ -30,16 +42,17 @@
           'bill' => old('bill_amount', ''),
           'paid' => '0',
           'source' => 'canteen_cash',
-          'entryMode' => 'total',
+          'entryMode' => $defaultMode,
+          'items' => $oldItems,
           'todayUrl' => route('purchases.today-deliveries'),
       ]))"
       @vendor-selected="setVendor($event.detail)"
       @submit="onSubmit($event)">
     <x-form-meta :date="$entryDate" />
-    <input type="hidden" name="entry_mode" value="total">
+    <input type="hidden" name="entry_mode" :value="entryMode">
     <input type="hidden" name="paid_amount" value="0">
 
-    <x-vendor-autocomplete :vendor="$vendor" focus="bill_amount" label="Vendor" />
+    <x-vendor-autocomplete :vendor="$vendor" :focus="$isQtyVendor ? 'qty_0' : 'bill_amount'" label="Vendor" />
 
     <template x-if="!vendor">
         <p class="hint-line mb-0">Select a vendor first to enter the bill.</p>
@@ -64,22 +77,61 @@
                         <li>
                             <span x-text="line.time"></span>
                             <span x-text="line.item_name || 'Mall'"></span>
+                            <span x-show="line.quantity && line.quantity !== '1'" x-text="line.quantity + (line.unit ? ' ' + line.unit : '')"></span>
                             <span x-text="fmt(line.line_total)"></span>
                         </li>
                     </template>
                 </ul>
             </div>
 
-            <x-money-input name="bill_amount" id="bill_amount" label="Bill amount" x-model="bill" />
+            {{-- Quantity vendor: qty × fixed rate --}}
+            <template x-if="vendor?.rate_fixed">
+                <div>
+                    <div class="balance-box tone-total mb-3">
+                        <div>
+                            <span>Fix rate</span>
+                            <div class="small text-muted" x-text="(vendor.default_item_name || vendor.name) + ' · per pcs'"></div>
+                        </div>
+                        <b class="text-primary" x-text="fmt(vendor.default_rate)"></b>
+                    </div>
 
-            <div class="mall-balance-sheet" x-show="n(bill) > 0" x-cloak>
+                    <template x-for="(row, index) in items" :key="index">
+                        <div>
+                            <input type="hidden" :name="'items['+index+'][item_name]'" :value="row.item_name">
+                            <input type="hidden" :name="'items['+index+'][unit]'" :value="row.unit || 'pcs'">
+                            <input type="hidden" :name="'items['+index+'][rate]'" :value="row.rate">
+
+                            <div class="field">
+                                <label :for="'qty_'+index">Kitni qty?</label>
+                                <input type="text" inputmode="numeric" class="form-control-x qty-lg" data-money data-qty-input
+                                       :name="'items['+index+'][quantity]'" :id="'qty_'+index"
+                                       x-model="row.quantity" placeholder="200" autocomplete="off" required>
+                            </div>
+
+                            <div class="line-total-bar mb-3">
+                                <span>Bill</span>
+                                <b x-text="row.quantity ? (row.quantity + ' × ' + row.rate + ' = ' + fmt(lineTotal(row))) : 'Qty × Rate'"></b>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            {{-- Normal vendor: bill amount only --}}
+            <template x-if="!vendor?.rate_fixed">
+                <div>
+                    <x-money-input name="bill_amount" id="bill_amount" label="Bill amount" x-model="bill" />
+                </div>
+            </template>
+
+            <div class="mall-balance-sheet" x-show="effectiveBill > 0" x-cloak>
                 <div class="vbs-row">
                     <span>Previous balance</span>
                     <b :class="balanceClass(prev)" x-text="fmt(prev)"></b>
                 </div>
                 <div class="vbs-row add">
                     <span>+ This mall</span>
-                    <b x-text="fmt(n(bill))"></b>
+                    <b x-text="fmt(effectiveBill)"></b>
                 </div>
                 <div class="vbs-row total">
                     <span>New balance</span>

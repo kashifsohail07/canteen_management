@@ -28,7 +28,15 @@ class VendorLedgerService
     public function __construct(private AuditService $audit) {}
 
     /**
-     * @param  array{name: string, phone?: ?string, notes?: ?string, opening_balance?: string|int|float|null}  $data
+     * @param  array{
+     *     name: string,
+     *     phone?: ?string,
+     *     notes?: ?string,
+     *     opening_balance?: string|int|float|null,
+     *     default_item_name?: ?string,
+     *     default_unit?: ?string,
+     *     default_rate?: string|int|float|null
+     * }  $data
      */
     public function createVendor(array $data, ?User $user = null): Vendor
     {
@@ -39,8 +47,14 @@ class VendorLedgerService
 
         $opening = Money::of($data['opening_balance'] ?? 0);
         // Positive = owed to vendor; negative = advance / overpaid.
+        $rate = isset($data['default_rate']) && $data['default_rate'] !== null && $data['default_rate'] !== ''
+            ? Money::of($data['default_rate'])
+            : null;
+        if ($rate !== null && ! Money::isPositive($rate)) {
+            $rate = null;
+        }
 
-        return DB::transaction(function () use ($data, $name, $opening, $user) {
+        return DB::transaction(function () use ($data, $name, $opening, $user, $rate) {
             if (Vendor::whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->exists()) {
                 throw ValidationException::withMessages(['name' => 'A vendor with this name already exists.']);
             }
@@ -49,6 +63,9 @@ class VendorLedgerService
                 'name' => $name,
                 'phone' => $data['phone'] ?? null,
                 'notes' => $data['notes'] ?? null,
+                'default_item_name' => $rate ? ($data['default_item_name'] ?? $name) : null,
+                'default_unit' => $rate ? ($data['default_unit'] ?? 'pcs') : null,
+                'default_rate' => $rate,
                 'current_balance' => Money::zero(),
                 'opening_balance' => Money::zero(),
                 'opening_balance_locked' => false,

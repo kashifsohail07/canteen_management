@@ -45,7 +45,7 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     // Vendors + autocomplete API
     Route::get('/api/vendors/search', VendorSearchController::class)->name('vendors.search');
-    Route::resource('vendors', VendorController::class)->except(['destroy']);
+    Route::resource('vendors', VendorController::class)->except(['destroy']); // destroy = admin only below
 
     // Quick entry
     Route::get('/sales/create', [SaleController::class, 'create'])->name('sales.create');
@@ -109,6 +109,7 @@ Route::middleware(['auth', 'active', 'admin'])->group(function () {
 
     Route::post('/vendors/{vendor}/adjust-balance', [VendorController::class, 'adjustBalance'])->name('vendors.adjust-balance');
     Route::post('/vendors/{vendor}/opening-balance', [VendorController::class, 'setOpeningBalance'])->name('vendors.opening-balance');
+    Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy'])->name('vendors.destroy');
 
     Route::get('/setup/vendors', [SetupController::class, 'vendors'])->name('setup.vendors');
     Route::post('/setup/vendors', [SetupController::class, 'storeVendors'])->name('setup.vendors.store');

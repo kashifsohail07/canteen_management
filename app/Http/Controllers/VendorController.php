@@ -63,6 +63,9 @@ class VendorController extends Controller
             'phone' => $request->validated('phone'),
             'notes' => $request->validated('notes'),
             'opening_balance' => $request->signedOpeningBalance(),
+            'default_item_name' => $request->validated('default_item_name'),
+            'default_unit' => $request->validated('default_unit'),
+            'default_rate' => $request->validated('default_rate'),
         ], $request->user());
 
         return redirect()->route('vendors.show', $vendor)->with('success', "Vendor \"{$vendor->name}\" ban gaya.");
@@ -94,18 +97,35 @@ class VendorController extends Controller
     {
         Gate::authorize('update', $vendor);
 
-        return view('vendors.edit', ['vendor' => $vendor]);
+        return view('vendors.edit', [
+            'vendor' => $vendor,
+            'isAdmin' => (bool) request()->user()?->isAdmin(),
+        ]);
+    }
+
+    /** Soft-delete: history (ledger / bills) safe; vendor list se hat jata hai. */
+    public function destroy(Vendor $vendor): RedirectResponse
+    {
+        Gate::authorize('delete', $vendor);
+
+        $name = $vendor->name;
+        $vendor->delete();
+
+        return redirect()
+            ->route('vendors.index')
+            ->with('success', "Vendor \"{$name}\" delete ho gaya.");
     }
 
     public function update(UpdateVendorRequest $request, Vendor $vendor): RedirectResponse
     {
+        $data = $request->validated();
         $vendor->update([
-            'name' => trim($request->validated('name')),
-            'phone' => $request->validated('phone'),
-            'notes' => $request->validated('notes'),
-            'default_item_name' => $request->validated('default_item_name'),
-            'default_unit' => $request->validated('default_unit') ?: 'pcs',
-            'default_rate' => $request->validated('default_rate'),
+            'name' => trim($data['name']),
+            'phone' => $data['phone'] ?? null,
+            'notes' => $data['notes'] ?? null,
+            'default_item_name' => $data['default_item_name'] ?? null,
+            'default_unit' => $data['default_rate'] ? ($data['default_unit'] ?? 'pcs') : null,
+            'default_rate' => $data['default_rate'] ?? null,
             'is_active' => $request->boolean('is_active'),
         ]);
 
