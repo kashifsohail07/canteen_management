@@ -28,7 +28,8 @@ class HomepageActivityTest extends TestCase
 
         $this->actingAs($this->staff)->get('/')
             ->assertOk()
-            ->assertSee('Purchase from Samosay Supplier')
+            ->assertSee('Purchase')
+            ->assertSee('Samosay Supplier')
             ->assertSee('First Break');
 
         $this->actingAs($this->staff)->getJson('/dashboard/activity')

@@ -77,7 +77,7 @@ class SaleService
             }
 
             $this->activity->log(
-                $session, 'sale', 'Sale – '.$segment->name,
+                $session, 'sale', $segment->name,
                 $method === 'cash' ? 'Cash sale' : ucfirst($method).' sale (no cash movement)',
                 $amount, null, ActivityColor::Green, null, $sale, false,
                 ['segment' => $segment->slug, 'payment_method' => $method], $user, $now,
@@ -249,7 +249,7 @@ class SaleService
                         ? 'Cash sale'
                         : ucfirst($method).' sale (no cash movement)'));
 
-            $title = $method === 'rent_side' ? $segment->name : 'Sale – '.$segment->name;
+            $title = $segment->name;
 
             $feed = ActivityLog::query()
                 ->where('reference_type', 'sale')

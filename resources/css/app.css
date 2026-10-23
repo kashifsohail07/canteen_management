@@ -1937,11 +1937,20 @@ a {
 }
 
 .act-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+}
+
+.act-list > .empty {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
-    overflow: hidden;
 }
 
 .act {
@@ -1950,17 +1959,163 @@ a {
     gap: 12px;
     padding: 12px 14px;
     color: var(--ink);
-    border-bottom: 1px solid var(--line);
-}
-
-.act:last-child {
-    border-bottom: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
 }
 
 .act:hover,
 .act:active {
     color: var(--ink);
     background: #f8faff;
+}
+
+/* Purchase entry card (matches purchase history mockup) */
+.purchase-card {
+    display: block;
+    padding: 14px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+
+.purchase-card:hover,
+.purchase-card:active {
+    color: var(--ink);
+    background: #fffdf8;
+}
+
+.pc-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pc-icon {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    font-size: 1.05rem;
+    border-radius: 13px;
+    color: var(--balance-orange);
+    background: var(--balance-orange-soft);
+}
+
+.pc-head-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.pc-name {
+    display: block;
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pc-when {
+    display: block;
+    margin-top: 1px;
+    font-size: 0.72rem;
+    color: var(--muted);
+}
+
+.pc-pill {
+    flex: none;
+    padding: 4px 10px;
+    font-size: 0.68rem;
+}
+
+.pc-stats {
+    display: grid;
+    grid-template-columns: 1fr 1px 1fr;
+    align-items: stretch;
+    column-gap: 14px;
+    margin-top: 12px;
+}
+
+.pc-stats-total-only {
+    grid-template-columns: 1fr;
+}
+
+.pc-stat {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pc-stats .pc-stat:first-child {
+    text-align: left;
+    align-items: flex-start;
+}
+
+.pc-stats .pc-stat:last-child,
+.pc-stats-total-only .pc-stat {
+    text-align: right;
+    align-items: flex-end;
+}
+
+.pc-stats-divider {
+    width: 1px;
+    justify-self: center;
+    background: var(--line);
+}
+
+.pc-stat-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.pc-stat-value {
+    font-size: 0.98rem;
+    font-weight: 800;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.pc-stat-total {
+    color: var(--balance-orange);
+}
+
+.pc-balance {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 10px 0 10px 12px;
+    background: #f3f4f6;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.pc-balance strong {
+    flex: none;
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.pc-balance-muted {
+    display: block;
+    font-weight: 500;
+    font-size: 0.72rem;
+    line-height: 1.35;
 }
 
 .act-icon {
@@ -1978,10 +2133,32 @@ a {
     min-width: 0;
 }
 
+.act-type-pill {
+    vertical-align: middle;
+    margin-right: 6px;
+    margin-bottom: 1px;
+    padding: 2px 7px;
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+}
+
 .act-title {
     font-weight: 700;
     font-size: 0.92rem;
     line-height: 1.25;
+}
+
+.act-aside {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    text-align: right;
+}
+
+.act-aside .pc-pill {
+    margin: 0;
 }
 
 .act-sub {
@@ -1992,6 +2169,7 @@ a {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    font-variant-numeric: tabular-nums;
 }
 
 .act-time {

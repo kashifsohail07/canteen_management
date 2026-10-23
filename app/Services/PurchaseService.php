@@ -235,31 +235,89 @@ class PurchaseService
         $bill = Money::of($purchase->bill_amount);
         $paid = Money::of($purchase->paid_amount);
         $unpaid = Money::sub($bill, $paid);
+        $previous = Money::of($purchase->previous_balance);
+        $balance = Money::of($vendor->current_balance);
 
-        $parts = ['Bill '.Money::format($bill)];
+        $purchase->loadMissing('items');
+        $qtyLabel = $this->formatPurchaseQty($purchase);
+
+        // Plain-text fallback (PDF / old clients): Qty → Bill → details + Balance.
+        $lines = [];
+        if ($qtyLabel !== null) {
+            $lines[] = 'Qty '.$qtyLabel;
+        }
+        $lines[] = 'Bill '.Money::format($bill);
+        $detailParts = ['Previous '.Money::format($previous)];
         if (Money::isPositive($paid)) {
-            $parts[] = 'Paid '.Money::format($paid).($source === PaymentSource::PersonalPocket ? ' (personal pocket)' : '');
+            $detailParts[] = 'Paid '.Money::format($paid).($source === PaymentSource::PersonalPocket ? ' (personal pocket)' : '');
         }
         if (Money::isPositive($unpaid)) {
-            $parts[] = 'On credit '.Money::format($unpaid);
+            $detailParts[] = 'On credit '.Money::format($unpaid);
         }
-        $parts[] = 'Vendor balance '.Money::format($vendor->current_balance);
+        $detailParts[] = 'Balance '.Money::format($balance);
+        $lines[] = implode(' · ', $detailParts);
+
+        $meta = [
+            'entry_mode' => $purchase->entry_mode,
+            'payment_source' => $source?->value,
+            'bill' => Money::format($bill),
+            'previous' => Money::format($previous),
+            'balance' => Money::format($balance),
+            'layout' => 'purchase_v2',
+        ];
+        if ($qtyLabel !== null) {
+            $meta['qty_label'] = $qtyLabel;
+        }
+        if (Money::isPositive($paid)) {
+            $meta['paid'] = Money::format($paid).($source === PaymentSource::PersonalPocket ? ' (personal pocket)' : '');
+        }
+        if (Money::isPositive($unpaid)) {
+            $meta['on_credit'] = Money::format($unpaid);
+        }
 
         $this->activity->log(
             $session,
             'purchase',
-            'Purchase from '.$vendor->name,
-            implode(' · ', $parts),
+            $vendor->name,
+            implode("\n", $lines),
             $bill,
             $paid,
             Money::isPositive($unpaid) ? ActivityColor::Orange : ActivityColor::Red,
             $vendor,
             $purchase,
             $hasImage,
-            ['entry_mode' => $purchase->entry_mode, 'payment_source' => $source?->value],
+            $meta,
             $user,
             $purchase->recorded_at,
         );
+    }
+
+    /** Sum item quantities for the activity line (e.g. "200 pcs"). Null when no items. */
+    private function formatPurchaseQty(Purchase $purchase): ?string
+    {
+        $items = $purchase->items;
+        if ($items->isEmpty()) {
+            return null;
+        }
+
+        $units = $items->pluck('unit')->map(fn ($u) => $u ?: 'pcs')->unique()->values();
+        if ($units->count() === 1) {
+            $total = '0';
+            foreach ($items as $item) {
+                $total = bcadd($total, (string) $item->quantity, 3);
+            }
+
+            return $this->trimQty($total).' '.$units->first();
+        }
+
+        return $items
+            ->map(fn ($item) => $this->trimQty((string) $item->quantity).' '.($item->unit ?: 'pcs'))
+            ->implode(' + ');
+    }
+
+    private function trimQty(string $qty): string
+    {
+        return rtrim(rtrim(number_format((float) $qty, 3, '.', ''), '0'), '.') ?: '0';
     }
 
     private function resolveSource(string $paid, ?string $source): ?PaymentSource

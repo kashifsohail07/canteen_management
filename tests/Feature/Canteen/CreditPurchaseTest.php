@@ -98,8 +98,62 @@ class CreditPurchaseTest extends TestCase
 
         $activity = ActivityLog::sole();
         $this->assertSame('purchase', $activity->activity_type);
+        $this->assertSame('Pepsi', $activity->title);
         $this->assertSame($vendor->id, $activity->vendor_id);
         $this->assertMoney(800, $activity->amount);
+        $this->assertStringContainsString('Previous', $activity->summary);
+        $this->assertStringContainsString('Bill', $activity->summary);
+        $this->assertStringContainsString('Balance', $activity->summary);
+        $this->assertSame('purchase_v2', $activity->meta['layout'] ?? null);
+    }
+
+    public function test_qty_vendor_purchase_activity_shows_qty_then_details_with_balance(): void
+    {
+        $vendor = $this->makeVendor('Samosay Supplier', 14000);
+        $vendor->update([
+            'default_item_name' => 'Samosay',
+            'default_unit' => 'pcs',
+            'default_rate' => '20.00',
+        ]);
+
+        $this->actingAs($this->staff)->post('/purchases', [
+            'vendor_id' => $vendor->id,
+            'entry_mode' => 'itemized',
+            'items' => [
+                ['item_name' => 'Samosay', 'quantity' => '200', 'unit' => 'pcs', 'rate' => '20'],
+            ],
+        ])->assertRedirect();
+
+        $activity = ActivityLog::sole();
+        $this->assertSame('Samosay Supplier', $activity->title);
+        $this->assertStringStartsWith("Qty 200 pcs\nBill Rs. 4,000\nPrevious", $activity->summary);
+        $this->assertStringContainsString('On credit', $activity->summary);
+        $this->assertStringContainsString('Balance Rs. 18,000', $activity->summary);
+        $this->assertSame('200 pcs', $activity->meta['qty_label'] ?? null);
+        $this->assertSame('Rs. 18,000', $activity->meta['balance'] ?? null);
+    }
+
+    public function test_itemized_purchase_activity_sums_total_qty(): void
+    {
+        $vendor = $this->makeVendor('Samosay Supplier', 0);
+        $vendor->update([
+            'default_item_name' => 'Samosay',
+            'default_unit' => 'pcs',
+            'default_rate' => '20.00',
+        ]);
+
+        $this->actingAs($this->staff)->post('/purchases', [
+            'vendor_id' => $vendor->id,
+            'entry_mode' => 'itemized',
+            'items' => [
+                ['item_name' => 'Samosay', 'quantity' => '100', 'unit' => 'pcs', 'rate' => '20'],
+                ['item_name' => 'Samosay', 'quantity' => '50', 'unit' => 'pcs', 'rate' => '20'],
+            ],
+        ])->assertRedirect();
+
+        $activity = ActivityLog::sole();
+        $this->assertStringStartsWith('Qty 150 pcs', $activity->summary);
+        $this->assertSame('150 pcs', $activity->meta['qty_label'] ?? null);
     }
 
     public function test_purchase_json_response_reports_new_summary(): void

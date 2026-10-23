@@ -94,7 +94,7 @@ class SuperUserSaleEditTest extends TestCase
         $this->assertSame($other->id, $sale->sale_segment_id);
 
         $activity = ActivityLog::where('reference_type', 'sale')->where('reference_id', $sale->id)->sole();
-        $this->assertSame('Sale – '.$other->name, $activity->title);
+        $this->assertSame($other->name, $activity->title);
     }
 
     public function test_admin_cannot_edit_sale_via_http(): void
