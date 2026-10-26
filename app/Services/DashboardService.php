@@ -131,6 +131,19 @@ class DashboardService
     {
         return ActivityLog::with('vendor')
             ->where('daily_session_id', $session->id)
+            // Hide sales that were deleted (reversed) or zeroed out — cash already adjusted.
+            ->where(function ($q) {
+                $q->where(function ($q2) {
+                    $q2->whereNull('reference_type')
+                        ->orWhere('reference_type', '!=', 'sale');
+                })->orWhereExists(function ($sub) {
+                    $sub->selectRaw('1')
+                        ->from('sales')
+                        ->whereColumn('sales.id', 'activity_logs.reference_id')
+                        ->where('sales.is_reversed', false)
+                        ->where('sales.amount', '>', 0);
+                });
+            })
             ->orderByDesc('recorded_at')
             ->orderByDesc('id')
             ->paginate($perPage);

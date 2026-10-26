@@ -147,9 +147,8 @@ class SuperUserSaleEditTest extends TestCase
         $this->assertMoney(0, $sale->amount);
         $this->assertMoney(0, $this->canteenCash());
 
-        $activity = ActivityLog::where('reference_type', 'sale')->where('reference_id', $sale->id)->sole();
-        $this->assertMoney(0, $activity->amount);
-        $this->assertStringContainsString('zero', strtolower($activity->summary));
+        // Zeroed sales must leave the activity feed (amount already reversed from cash).
+        $this->assertSame(0, ActivityLog::where('reference_type', 'sale')->where('reference_id', $sale->id)->count());
     }
 
     public function test_super_user_sees_delete_form_on_sale_activity(): void

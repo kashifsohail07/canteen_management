@@ -251,12 +251,14 @@ class SaleService
 
             $title = $segment->name;
 
-            $feed = ActivityLog::query()
+            $feedQuery = ActivityLog::query()
                 ->where('reference_type', 'sale')
-                ->where('reference_id', $locked->id)
-                ->first();
+                ->where('reference_id', $locked->id);
 
-            if ($feed) {
+            if (Money::isZero($amount)) {
+                // Zero = ghalti entry — list se hatao (cash pehle hi adjust ho chuka).
+                $feedQuery->delete();
+            } elseif ($feed = $feedQuery->first()) {
                 $feed->update([
                     'title' => $title,
                     'summary' => $summary,
@@ -357,9 +359,14 @@ class SaleService
                 'reversal_reason' => $reason,
             ]);
 
+            // Drop every feed row tied to this sale (sale / rent_reserve retargeted to sale).
             ActivityLog::query()
-                ->where('reference_type', 'sale')
                 ->where('reference_id', $locked->id)
+                ->where(function ($q) {
+                    $q->where('reference_type', 'sale')
+                        ->orWhere('reference_type', Sale::class)
+                        ->orWhere('activity_type', 'sale');
+                })
                 ->delete();
 
             $this->audit->log('sale.deleted', $locked, $old, [
