@@ -5,11 +5,13 @@ namespace Tests\Concerns;
 use App\Enums\CashAccountCode;
 use App\Enums\UserRole;
 use App\Models\CashAccount;
+use App\Models\Customer;
 use App\Models\ExpenseCategory;
 use App\Models\SaleSegment;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Services\CashLedgerService;
+use App\Services\CustomerLedgerService;
 use App\Services\SettingService;
 use App\Services\VendorLedgerService;
 use App\Support\Money;
@@ -68,6 +70,15 @@ trait SeedsCanteenBasics
     protected function makeVendor(string $name = 'Test Vendor', string|int|float $opening = 0): Vendor
     {
         return app(VendorLedgerService::class)->createVendor([
+            'name' => $name,
+            'opening_balance' => $opening,
+        ], $this->admin ?? null);
+    }
+
+    /** Create a customer through the ledger service (opening baqaya when non-zero). */
+    protected function makeCustomer(string $name = 'Test Customer', string|int|float $opening = 0): Customer
+    {
+        return app(CustomerLedgerService::class)->createCustomer([
             'name' => $name,
             'opening_balance' => $opening,
         ], $this->admin ?? null);

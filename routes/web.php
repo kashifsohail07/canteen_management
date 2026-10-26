@@ -3,6 +3,8 @@
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\ClosingController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerSearchController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InvoiceController;
@@ -52,6 +54,14 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Vendors + autocomplete API
     Route::get('/api/vendors/search', VendorSearchController::class)->name('vendors.search');
     Route::resource('vendors', VendorController::class)->except(['destroy']); // destroy = admin only below
+
+    // Customers (udhaar ledger) + autocomplete
+    Route::get('/api/customers/search', CustomerSearchController::class)->name('customers.search');
+    Route::resource('customers', CustomerController::class)->except(['destroy']);
+    Route::get('/customers-udhaar/create', [CustomerController::class, 'udhaarForm'])->name('customers.udhaar');
+    Route::post('/customers-udhaar', [CustomerController::class, 'storeUdhaar'])->name('customers.udhaar.store');
+    Route::get('/customers-payment/create', [CustomerController::class, 'paymentForm'])->name('customers.payment');
+    Route::post('/customers-payment', [CustomerController::class, 'storePayment'])->name('customers.payment.store');
 
     // Quick entry
     Route::get('/sales/create', [SaleController::class, 'create'])->name('sales.create');
@@ -118,6 +128,10 @@ Route::middleware(['auth', 'active', 'admin'])->group(function () {
     Route::post('/vendors/{vendor}/opening-balance', [VendorController::class, 'setOpeningBalance'])->name('vendors.opening-balance');
     Route::delete('/vendors/{vendor}', [VendorController::class, 'destroy'])->name('vendors.destroy');
 
+    Route::post('/customers/{customer}/adjust-balance', [CustomerController::class, 'adjustBalance'])->name('customers.adjust-balance');
+    Route::post('/customers/{customer}/opening-balance', [CustomerController::class, 'setOpeningBalance'])->name('customers.opening-balance');
+    Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy');
+
     Route::get('/setup/vendors', [SetupController::class, 'vendors'])->name('setup.vendors');
     Route::post('/setup/vendors', [SetupController::class, 'storeVendors'])->name('setup.vendors.store');
 });
@@ -129,6 +143,7 @@ Route::middleware(['auth', 'active', 'admin'])->group(function () {
 */
 Route::middleware(['auth', 'active', 'super_user'])->group(function () {
     Route::put('/sales/{sale}', [SaleController::class, 'update'])->name('sales.update');
+    Route::delete('/sales/{sale}', [SaleController::class, 'destroy'])->name('sales.destroy');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::get('/users/create', [UserController::class, 'create'])->name('users.create');

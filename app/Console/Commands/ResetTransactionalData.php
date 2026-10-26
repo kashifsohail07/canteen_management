@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\CashAccount;
+use App\Models\Customer;
 use App\Models\Vendor;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -11,14 +12,14 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * Wipe day-to-day hisab data for a fresh start.
- * Keeps: users, vendors (names/phones/rates), sale segments, settings, expense categories, items.
+ * Keeps: users, vendors (names/phones/rates), customers (names), sale segments, settings, expense categories, items.
  */
 class ResetTransactionalData extends Command
 {
     protected $signature = 'canteen:fresh-data
                             {--force : Skip confirmation prompt}';
 
-    protected $description = 'Clear all sales/mall/payments/cash history. Keeps users and vendors.';
+    protected $description = 'Clear all sales/mall/payments/cash history. Keeps users, vendors and customers.';
 
     /** @var list<string> */
     private array $wipe = [
@@ -26,6 +27,7 @@ class ResetTransactionalData extends Command
         'purchases',
         'vendor_payments',
         'vendor_ledger_entries',
+        'customer_ledger_entries',
         'sales',
         'cash_transactions',
         'owner_transactions',
@@ -51,7 +53,7 @@ class ResetTransactionalData extends Command
     {
         if (! $this->option('force')) {
             $this->warn('This will DELETE all sales, mall, payments, cash, rent and activity.');
-            $this->info('Kept: users, vendors, segments, settings, expense categories.');
+            $this->info('Kept: users, vendors, customers, segments, settings, expense categories.');
             if (! $this->confirm('Continue and wipe transactional data?', false)) {
                 $this->line('Cancelled.');
 
@@ -94,14 +96,25 @@ class ResetTransactionalData extends Command
             $this->line('  reset vendor balances → 0 (vendors kept)');
         }
 
+        if (Schema::hasTable('customers')) {
+            Customer::withTrashed()->update([
+                'current_balance' => '0.00',
+                'opening_balance' => '0.00',
+                'opening_balance_locked' => false,
+                'last_used_at' => null,
+            ]);
+            $this->line('  reset customer balances → 0 (customers kept)');
+        }
+
         $this->clearBillPhotos();
 
         $users = Schema::hasTable('users') ? DB::table('users')->count() : 0;
         $vendors = Schema::hasTable('vendors') ? DB::table('vendors')->count() : 0;
+        $customers = Schema::hasTable('customers') ? DB::table('customers')->count() : 0;
 
         $this->newLine();
-        $this->info("Done. Fresh system ready. Users kept: {$users}. Vendors kept: {$vendors}.");
-        $this->comment('Tip: set vendor opening balances again if needed from Vendors.');
+        $this->info("Done. Fresh system ready. Users kept: {$users}. Vendors kept: {$vendors}. Customers kept: {$customers}.");
+        $this->comment('Tip: set vendor/customer opening balances again if needed.');
 
         return self::SUCCESS;
     }

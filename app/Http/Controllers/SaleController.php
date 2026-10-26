@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResolvesBusinessDate;
 use App\Http\Controllers\Concerns\RespondsToForms;
+use App\Http\Requests\DeleteSaleRequest;
 use App\Http\Requests\StoreSaleRequest;
 use App\Http\Requests\UpdateSaleRequest;
 use App\Models\ActivityLog;
@@ -78,5 +79,21 @@ class SaleController extends Controller
         return redirect()
             ->route($activity ? 'activity.show' : 'dashboard', $activity?->id)
             ->with('success', 'Sale update ho gayi: '.Money::format($updated->amount).' ('.$updated->segment->name.')');
+    }
+
+    /** Super User: delete a mistaken sale (reverses cash, removes from feed). */
+    public function destroy(DeleteSaleRequest $request, Sale $sale, SaleService $sales): RedirectResponse
+    {
+        $sale->loadMissing('dailySession', 'segment');
+        $date = $sale->dailySession?->business_date;
+        $label = Money::format($sale->amount).' ('.$sale->segment?->name.')';
+
+        $sales->delete($sale, $request->validated('reason'), $request->user());
+
+        $params = ($date && ! $date->isToday()) ? ['date' => $date->toDateString()] : [];
+
+        return redirect()
+            ->route('dashboard', $params)
+            ->with('success', 'Sale delete ho gayi: '.$label);
     }
 }

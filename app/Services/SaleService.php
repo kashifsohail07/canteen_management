@@ -277,6 +277,98 @@ class SaleService
         });
     }
 
+    /**
+     * Super User only: remove a mistaken sale from the day.
+     * Reverses cash / rent-side effects, marks the sale reversed, drops the activity feed row.
+     */
+    public function delete(Sale $sale, string $reason, User $user): void
+    {
+        if (! $user->isSuperUser()) {
+            throw new AuthorizationException('Only a super user can delete a sale.');
+        }
+
+        $reason = trim($reason);
+        if (strlen($reason) < 3) {
+            throw ValidationException::withMessages(['reason' => 'Delete ki wajah likhna zaroori hai.']);
+        }
+
+        $sale->loadMissing('dailySession', 'segment');
+
+        if ($sale->is_reversed) {
+            throw ValidationException::withMessages(['reason' => 'Yeh sale pehle hi delete / reverse ho chuki hai.']);
+        }
+
+        if ($sale->dailySession->isClosed()) {
+            throw ValidationException::withMessages([
+                'reason' => 'Pehle din reopen karein, phir sale delete karein.',
+            ]);
+        }
+
+        DB::transaction(function () use ($sale, $reason, $user) {
+            $locked = Sale::whereKey($sale->id)->lockForUpdate()->firstOrFail();
+            $locked->load('dailySession', 'segment');
+
+            if ($locked->is_reversed || $locked->dailySession->isClosed()) {
+                throw ValidationException::withMessages(['reason' => 'Yeh sale ab delete nahi ho sakti.']);
+            }
+
+            $amount = Money::of($locked->amount);
+            $method = strtolower((string) $locked->payment_method) ?: 'cash';
+            $now = now();
+
+            $ctx = [
+                'session' => $locked->dailySession,
+                'reference' => $locked,
+                'notes' => 'Sale delete: '.$reason,
+                'user' => $user,
+                'recorded_at' => $now,
+            ];
+
+            if ($method === 'rent_side' && Money::isPositive($amount)) {
+                // Undo rent set-aside: rent_reserve → canteen_cash
+                $this->cash->debit(CashAccountCode::RentReserve, $amount, 'reversal', $ctx);
+                $this->cash->credit(CashAccountCode::CanteenCash, $amount, 'reversal', $ctx);
+                $this->rent->bumpReservedTotal(
+                    $locked->dailySession->business_date->year,
+                    $locked->dailySession->business_date->month,
+                    Money::sub('0', $amount),
+                );
+
+                RentReservation::query()
+                    ->where('sale_id', $locked->id)
+                    ->where('is_reversed', false)
+                    ->update(['is_reversed' => true]);
+            } elseif ($method === 'cash' && Money::isPositive($amount)) {
+                $this->cash->debit(CashAccountCode::CanteenCash, $amount, 'reversal', $ctx);
+            }
+
+            $old = [
+                'sale_segment_id' => $locked->sale_segment_id,
+                'segment' => $locked->segment?->name,
+                'amount' => $amount,
+                'payment_method' => $method,
+                'notes' => $locked->notes,
+            ];
+
+            $locked->update([
+                'is_reversed' => true,
+                'reversed_by' => $user->id,
+                'reversed_at' => $now,
+                'reversal_reason' => $reason,
+            ]);
+
+            ActivityLog::query()
+                ->where('reference_type', 'sale')
+                ->where('reference_id', $locked->id)
+                ->delete();
+
+            $this->audit->log('sale.deleted', $locked, $old, [
+                'is_reversed' => true,
+                'reversal_reason' => $reason,
+            ], $reason, $user);
+        });
+    }
+
     /** Move the rent-side difference between canteen cash and rent reserve. */
     private function adjustRentSideCash(Sale $sale, string $diff, string $reason, User $user): void
     {

@@ -44,7 +44,7 @@ trait RespondsToForms
         }
 
         $summary = app(DashboardService::class)->summary($session);
-        foreach (['canteen_cash', 'rent_reserve', 'owner_recoverable', 'vendors_owed', 'sales_today', 'purchases_today', 'expenses_today', 'expected_closing_cash'] as $key) {
+        foreach (['canteen_cash', 'rent_reserve', 'owner_recoverable', 'vendors_owed', 'customers_owed', 'sales_today', 'purchases_today', 'expenses_today', 'expected_closing_cash'] as $key) {
             $summary[$key.'_formatted'] = Money::format($summary[$key]);
         }
         $payload['summary'] = $summary;

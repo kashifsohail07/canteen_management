@@ -152,6 +152,68 @@ class SuperUserSaleEditTest extends TestCase
         $this->assertStringContainsString('zero', strtolower($activity->summary));
     }
 
+    public function test_super_user_sees_delete_form_on_sale_activity(): void
+    {
+        $sale = $this->postSale('1000');
+        $activity = ActivityLog::where('reference_type', 'sale')->where('reference_id', $sale->id)->sole();
+
+        $this->actingAs($this->super)
+            ->get(route('activity.show', $activity))
+            ->assertOk()
+            ->assertSee('Delete Sale')
+            ->assertSee(route('sales.destroy', $sale), false);
+    }
+
+    public function test_super_user_can_delete_a_duplicate_sale(): void
+    {
+        $sale = $this->postSale('3000');
+        $this->assertMoney(3000, $this->canteenCash());
+        $this->assertSame(1, ActivityLog::where('reference_type', 'sale')->where('reference_id', $sale->id)->count());
+
+        $this->actingAs($this->super)
+            ->delete(route('sales.destroy', $sale), ['reason' => 'Double entry by mistake'])
+            ->assertRedirect(route('dashboard'));
+
+        $sale->refresh();
+        $this->assertTrue($sale->is_reversed);
+        $this->assertSame($this->super->id, $sale->reversed_by);
+        $this->assertSame('Double entry by mistake', $sale->reversal_reason);
+        $this->assertMoney(0, $this->canteenCash());
+        $this->assertSame(0, ActivityLog::where('reference_type', 'sale')->where('reference_id', $sale->id)->count());
+
+        $audit = AuditLog::where('action', 'sale.deleted')->sole();
+        $this->assertSame($this->super->id, $audit->user_id);
+        $this->assertSame('Double entry by mistake', $audit->reason);
+    }
+
+    public function test_admin_cannot_delete_sale(): void
+    {
+        $sale = $this->postSale('800');
+
+        $this->actingAs($this->admin)
+            ->delete(route('sales.destroy', $sale), ['reason' => 'trying as admin'])
+            ->assertForbidden();
+
+        $this->assertFalse($sale->fresh()->is_reversed);
+        $this->assertMoney(800, $this->canteenCash());
+        $this->assertSame(1, ActivityLog::where('reference_type', 'sale')->where('reference_id', $sale->id)->count());
+    }
+
+    public function test_cannot_delete_sale_on_closed_day(): void
+    {
+        $sale = $this->postSale('100');
+        $today = now()->toDateString();
+
+        $this->actingAs($this->admin)->post('/closing', $this->closeDayPayload('100', $today))->assertRedirect();
+
+        $this->actingAs($this->super)
+            ->delete(route('sales.destroy', $sale), ['reason' => 'after close'])
+            ->assertSessionHasErrors('reason');
+
+        $this->assertFalse($sale->fresh()->is_reversed);
+        $this->assertMoney(100, $this->canteenCash());
+    }
+
     public function test_cannot_edit_sale_on_closed_day(): void
     {
         $sale = $this->postSale('100');

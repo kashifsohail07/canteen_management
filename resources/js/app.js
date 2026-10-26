@@ -461,12 +461,107 @@ Alpine.data('activityFeed', (cfg = {}) => ({
             });
             if (!res.ok) throw new Error('failed');
             const data = await res.json();
+            const before = this.$refs.list.children.length;
             this.$refs.list.insertAdjacentHTML('beforeend', data.html);
+            const added = Array.from(this.$refs.list.children).slice(before);
+            added.forEach((el) => window.Alpine?.initTree?.(el));
             this.next = data.has_more ? data.next_page : null;
         } catch (e) {
             this.failed = true;
         }
         this.loading = false;
+    },
+}));
+
+/** Swipe-left on activity cards to reveal Edit / Delete. */
+Alpine.data('swipeActions', (cfg = {}) => ({
+    open: false,
+    dragging: false,
+    moved: false,
+    lockY: false,
+    startX: 0,
+    startY: 0,
+    dx: 0,
+    width: cfg.width || 136,
+
+    onStart(e) {
+        const t = e.touches?.[0];
+        if (!t) return;
+        this.startX = t.clientX;
+        this.startY = t.clientY;
+        this.dragging = true;
+        this.moved = false;
+        this.lockY = false;
+        this.dx = this.open ? -this.width : 0;
+    },
+
+    onMove(e) {
+        if (!this.dragging) return;
+        const t = e.touches?.[0];
+        if (!t) return;
+
+        const rawX = t.clientX - this.startX;
+        const rawY = t.clientY - this.startY;
+
+        if (!this.moved && Math.abs(rawY) > 10 && Math.abs(rawY) > Math.abs(rawX)) {
+            this.dragging = false;
+            this.lockY = true;
+            this.dx = this.open ? -this.width : 0;
+            return;
+        }
+
+        if (Math.abs(rawX) > 6) {
+            this.moved = true;
+            e.preventDefault();
+        }
+
+        let x = (this.open ? -this.width : 0) + rawX;
+        x = Math.min(0, Math.max(-this.width, x));
+        this.dx = x;
+    },
+
+    onEnd() {
+        if (this.lockY) {
+            this.lockY = false;
+            return;
+        }
+        if (!this.dragging) {
+            this.dx = this.open ? -this.width : 0;
+            return;
+        }
+        this.dragging = false;
+        this.open = this.dx < -(this.width / 2);
+        this.dx = this.open ? -this.width : 0;
+        if (this.open) {
+            window.dispatchEvent(new CustomEvent('swipe-open', { detail: this.$el }));
+        }
+    },
+
+    close() {
+        this.open = false;
+        this.dx = 0;
+        this.dragging = false;
+        this.moved = false;
+    },
+
+    tap(url) {
+        if (this.moved) return;
+        if (this.open) {
+            this.close();
+            return;
+        }
+        window.location = url;
+    },
+
+    init() {
+        this._onOther = (e) => {
+            if (e.detail !== this.$el) this.close();
+        };
+        window.addEventListener('swipe-open', this._onOther);
+    },
+
+    destroy() {
+        window.removeEventListener('swipe-open', this._onOther);
     },
 }));
 
@@ -483,6 +578,40 @@ Alpine.data('vendorRows', (initial = []) => ({
     },
     remove(i) {
         if (this.rows.length > 1) this.rows.splice(i, 1);
+    },
+}));
+
+/** App shell: page loader + refresh. One label only: "Loading…". */
+Alpine.data('pageShell', () => ({
+    moreOpen: false,
+    pageBusy: true,
+
+    syncBody() {
+        document.body.classList.toggle('is-page-loading', this.pageBusy);
+    },
+
+    ready() {
+        this.syncBody();
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                this.pageBusy = false;
+                this.syncBody();
+            }, 220);
+        });
+    },
+
+    refresh() {
+        if (this.pageBusy) return;
+        this.pageBusy = true;
+        this.syncBody();
+        location.reload();
+    },
+
+    onPageShow(event) {
+        if (event.persisted) {
+            this.pageBusy = false;
+            this.syncBody();
+        }
     },
 }));
 

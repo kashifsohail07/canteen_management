@@ -106,6 +106,7 @@
         <a href="{{ route('closing.show', $q) }}"><i class="bi bi-lock"></i> Close Day</a>
         <a href="{{ route('reports.index') }}"><i class="bi bi-bar-chart"></i> Reports</a>
         <a href="{{ route('vendors.index') }}"><i class="bi bi-people"></i> Vendors</a>
+        <a href="{{ route('customers.index') }}"><i class="bi bi-person-badge"></i> Customers</a>
     </div>
 
     {{-- 4. Overview (secondary) --}}
@@ -114,6 +115,11 @@
             <span class="dash-kicker">Vendors ko dena hai</span>
             <strong data-vendors>{{ Money::format($summary['vendors_owed']) }}</strong>
             <small>{{ $vendorCount }} {{ $vendorCount === 1 ? 'vendor' : 'vendors' }}</small>
+        </a>
+        <a class="dash-mini dm-owed" href="{{ route('customers.index') }}">
+            <span class="dash-kicker">Customers se lena hai</span>
+            <strong data-customers>{{ Money::format($summary['customers_owed'] ?? 0) }}</strong>
+            <small>{{ $customerCount }} {{ $customerCount === 1 ? 'customer' : 'customers' }}</small>
         </a>
         <a class="dash-mini dm-rent" href="{{ route('rent.create', $q) }}">
             <span class="dash-kicker">Rent side</span>
@@ -162,7 +168,7 @@
         <div x-data="activityFeed(@js(['url' => route('dashboard.activity', [], false), 'date' => $date->toDateString(), 'next' => $activity->hasMorePages() ? 2 : null]))">
             <div class="act-list" x-ref="list">
                 @foreach ($activity as $item)
-                    <x-activity-item :activity="$item" />
+                    <x-activity-item :activity="$item" :day-open="$session?->isOpen() ?? false" />
                 @endforeach
             </div>
             <div class="text-center mt-3" x-show="next" x-cloak>

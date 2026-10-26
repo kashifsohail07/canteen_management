@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResolvesBusinessDate;
 use App\Models\ActivityLog;
+use App\Models\Customer;
 use App\Models\Vendor;
 use App\Services\DailySessionService;
 use App\Services\DashboardService;
@@ -62,6 +63,7 @@ class DashboardController extends Controller
             'entryDate' => $isToday ? null : $date->toDateString(),
             'topDate' => $date,
             'vendorCount' => Vendor::count(),
+            'customerCount' => Customer::count(),
         ]);
     }
 
@@ -82,8 +84,12 @@ class DashboardController extends Controller
 
         $page = $this->dashboard->activity($session, 20);
 
+        $dayOpen = $session->isOpen();
         $html = $page->getCollection()->map(
-            fn (ActivityLog $a) => Blade::render('<x-activity-item :activity="$activity" />', ['activity' => $a])
+            fn (ActivityLog $a) => Blade::render(
+                '<x-activity-item :activity="$activity" :day-open="$dayOpen" />',
+                ['activity' => $a, 'dayOpen' => $dayOpen]
+            )
         )->implode('');
 
         return response()->json([

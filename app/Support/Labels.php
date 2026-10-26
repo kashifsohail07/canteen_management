@@ -15,6 +15,7 @@ class Labels
             'owner_deposit' => 'Owner Ne Cash Diya',
             'owner_repayment' => 'Owner Ko Wapis Kiya',
             'vendor_payment' => 'Vendor Payment',
+            'customer_payment' => 'Customer Payment',
             'expense' => 'Kharcha',
             'rent_reserve_transfer' => 'Rent Side Rakha',
             'rent_payment' => 'Rent Diya',
@@ -43,6 +44,7 @@ class Labels
         return match ($type) {
             'opening_balance' => 'Opening Balance',
             'purchase' => 'Maal / Bill',
+            'udhaar' => 'Udhaar',
             'payment' => 'Payment',
             'adjustment' => 'Adjustment',
             'reversal' => 'Reversal',
@@ -67,6 +69,8 @@ class Labels
             'sale' => 'bi-cash-coin',
             'purchase' => 'bi-basket2-fill',
             'vendor_payment' => 'bi-send-fill',
+            'customer_udhaar' => 'bi-journal-plus',
+            'customer_payment' => 'bi-person-check-fill',
             'expense' => 'bi-receipt',
             'owner_deposit' => 'bi-box-arrow-in-down',
             'owner_repayment' => 'bi-box-arrow-up',
@@ -83,7 +87,7 @@ class Labels
     public static function activitySign(string $type): string
     {
         return match ($type) {
-            'sale', 'owner_deposit' => '+',
+            'sale', 'owner_deposit', 'customer_payment' => '+',
             'vendor_payment', 'expense', 'rent_payment', 'owner_repayment' => '−',
             default => '',
         };

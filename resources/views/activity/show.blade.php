@@ -21,6 +21,10 @@
     }
     $activityMeta = is_array($activity->meta) ? $activity->meta : [];
     $purchaseLayout = $activity->activity_type === 'purchase' && ($activityMeta['layout'] ?? null) === 'purchase_v2';
+    $qtyLabel = ($purchaseLayout && ! empty($activityMeta['qty_label'])) ? $activityMeta['qty_label'] : null;
+    $purchaseTotal = $purchaseLayout
+        ? ($activityMeta['bill'] ?? Money::format($activity->amount))
+        : Money::format($activity->amount);
 @endphp
 
 <x-page-header title="Entry Detail" :sub="$activity->recorded_at->format('D, d M Y · h:i A')" :back="$back" />
@@ -36,7 +40,6 @@
                 </span>
                 <span class="badge-soft orange pc-pill">Purchase</span>
             </div>
-            @php($qtyLabel = $purchaseLayout && ! empty($activityMeta['qty_label']) ? $activityMeta['qty_label'] : null)
             <div class="pc-stats {{ $qtyLabel ? '' : 'pc-stats-total-only' }}">
                 @if ($qtyLabel)
                     <div class="pc-stat">
@@ -47,7 +50,7 @@
                 @endif
                 <div class="pc-stat">
                     <span class="pc-stat-label">Total</span>
-                    <span class="pc-stat-value pc-stat-total">{{ $purchaseLayout ? ($activityMeta['bill'] ?? Money::format($activity->amount)) : Money::format($activity->amount) }}</span>
+                    <span class="pc-stat-value pc-stat-total">{{ $purchaseTotal }}</span>
                 </div>
             </div>
             @if ($purchaseLayout && ! empty($activityMeta['balance']))
@@ -62,7 +65,9 @@
             <span class="act-icon" style="width:52px;height:52px;font-size:1.4rem"><i class="bi {{ Labels::activityIcon($activity->activity_type) }}"></i></span>
             <span class="act-body">
                 <span class="act-title d-block fs-5">{{ $title }}</span>
-                @if ($activity->summary)<span class="act-sub d-block" style="-webkit-line-clamp:unset">{{ $activity->summary }}</span>@endif
+                @if ($activity->summary)
+                    <span class="act-sub d-block" style="-webkit-line-clamp:unset">{{ $activity->summary }}</span>
+                @endif
             </span>
             <span class="act-aside">
                 @if ($activity->activity_type === 'sale')
@@ -177,9 +182,39 @@
             </button>
         </form>
     </div>
+
+    <div class="card-x" x-data="{ open: false, submitting: false }">
+        <div class="card-title text-danger">Delete Sale</div>
+        <div class="field-hint mb-2">Ghalti se double entry? Delete se cash wapas adjust hoga aur feed se hat jayegi.</div>
+
+        <button type="button" class="btn-xl btn-sm-x btn-danger-soft w-100" x-show="!open" @click="open = true">
+            <i class="bi bi-trash-fill"></i> Delete this sale
+        </button>
+
+        <form method="POST" action="{{ route('sales.destroy', $record) }}" x-show="open" x-cloak
+              @submit="if (submitting) { $event.preventDefault() } else { submitting = true }"
+              onsubmit="return confirm('Yeh sale permanently delete karein?\n\nCash reverse ho jayega aur activity se hat jayegi.')">
+            @csrf
+            @method('DELETE')
+
+            <div class="field">
+                <label for="delete_reason">Reason (required)</label>
+                <input type="text" id="delete_reason" name="reason" class="form-control-x" maxlength="500"
+                       required value="{{ old('reason') }}" placeholder="e.g. Double entry by mistake">
+                @error('reason')<div class="field-error">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button" class="btn-xl btn-sm-x btn-ghost flex-fill" @click="open = false">Cancel</button>
+                <button type="submit" class="btn-xl btn-sm-x btn-danger-soft flex-fill" :class="{ disabled: submitting }">
+                    <i class="bi bi-trash-fill"></i> Confirm delete
+                </button>
+            </div>
+        </form>
+    </div>
 @elseif (auth()->user()?->isSuperUser() && ($record instanceof \App\Models\Sale) && $activity->dailySession->isClosed())
     <div class="card-x">
-        <div class="field-hint mb-0"><i class="bi bi-lock-fill"></i> Day is closed — reopen first, then sale can be edited.</div>
+        <div class="field-hint mb-0"><i class="bi bi-lock-fill"></i> Day is closed — reopen first, then sale can be edited / deleted.</div>
     </div>
 @endif
 

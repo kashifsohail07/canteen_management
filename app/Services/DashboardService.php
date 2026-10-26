@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\CashAccountCode;
 use App\Models\ActivityLog;
+use App\Models\Customer;
 use App\Models\DailySession;
 use App\Models\RentObligation;
 use App\Models\Sale;
@@ -41,6 +42,12 @@ class DashboardService
                 $vendorsOwed = Money::add($vendorsOwed, $v->current_balance);
             });
 
+        $customersOwed = Money::zero();
+        Customer::where('is_active', true)->where('current_balance', '>', 0)->get(['current_balance'])
+            ->each(function ($c) use (&$customersOwed) {
+                $customersOwed = Money::add($customersOwed, $c->current_balance);
+            });
+
         $monthStats = $this->monthSalesStats($date->year, $date->month);
 
         return [
@@ -51,6 +58,7 @@ class DashboardService
             'rent_reserve' => $balances[CashAccountCode::RentReserve->value],
             'owner_recoverable' => $balances[CashAccountCode::OwnerRecoverable->value],
             'vendors_owed' => $vendorsOwed,
+            'customers_owed' => $customersOwed,
             'sales_today' => $day['sales_total'],
             'purchases_today' => $day['purchases_total'],
             'expenses_today' => $day['expenses_total'],

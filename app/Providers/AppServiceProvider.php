@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Customer;
 use App\Models\DailySession;
 use App\Models\Vendor;
+use App\Policies\CustomerPolicy;
 use App\Policies\DailySessionPolicy;
 use App\Policies\VendorPolicy;
 use Illuminate\Pagination\Paginator;
@@ -30,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
         Vite::useBuildDirectory('dist');
 
         Gate::policy(Vendor::class, VendorPolicy::class);
+        Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::policy(DailySession::class, DailySessionPolicy::class);
     }
 }
