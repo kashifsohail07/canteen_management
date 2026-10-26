@@ -36,7 +36,7 @@
 @endphp
 
 @if ($canSwipeSale)
-    <div class="swipe-row" x-data="swipeActions()" @click.outside="close()" data-activity-id="{{ $a->id }}">
+    <div class="swipe-row" x-data="swipeActions()" data-activity-id="{{ $a->id }}">
         <div class="swipe-actions">
             <a href="{{ $detailUrl }}" class="swipe-action swipe-edit" @click.stop>
                 <i class="bi bi-pencil-fill"></i>
@@ -48,7 +48,7 @@
                 @csrf
                 @method('DELETE')
                 <input type="hidden" name="reason" value="Deleted from activity swipe (duplicate / mistake)">
-                <button type="submit" class="swipe-action swipe-delete">
+                <button type="submit" class="swipe-action swipe-delete" @click.stop>
                     <i class="bi bi-trash-fill"></i>
                     <small>Delete</small>
                 </button>
@@ -59,11 +59,10 @@
              tabindex="0"
              :class="{ 'is-open': open, 'is-dragging': dragging }"
              :style="'transform: translateX(' + dx + 'px)'"
-             @touchstart="onStart($event)"
-             @touchmove="onMove($event)"
-             @touchend="onEnd()"
-             @touchcancel="onEnd()"
-             @click="tap('{{ $detailUrl }}')"
+             @touchstart.passive="onStart($event)"
+             @touchend.passive="onEnd()"
+             @touchcancel.passive="onEnd()"
+             @click.prevent="tap('{{ $detailUrl }}')"
              @keydown.enter="window.location = '{{ $detailUrl }}'">
             <span class="act-icon"><i class="bi {{ \App\Support\Labels::activityIcon($a->activity_type) }}"></i></span>
             <span class="act-body">

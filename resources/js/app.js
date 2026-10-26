@@ -473,26 +473,42 @@ Alpine.data('activityFeed', (cfg = {}) => ({
     },
 }));
 
-/** Swipe-left on activity cards to reveal Edit / Delete. */
+/**
+ * Swipe-left on activity cards to reveal Edit / Delete.
+ * Uses non-passive touchmove (so preventDefault works on iOS) and ignores
+ * the ghost click that would otherwise snap the row shut.
+ */
 Alpine.data('swipeActions', (cfg = {}) => ({
     open: false,
     dragging: false,
-    moved: false,
-    lockY: false,
+    axis: null, // null | 'x' | 'y'
+    ignoreTap: false,
     startX: 0,
     startY: 0,
+    startDx: 0,
     dx: 0,
     width: cfg.width || 136,
+    _front: null,
+    _ignoreTimer: null,
+
+    measure() {
+        const actions = this.$el?.querySelector('.swipe-actions');
+        if (actions) {
+            const w = actions.getBoundingClientRect().width;
+            if (w > 0) this.width = w;
+        }
+    },
 
     onStart(e) {
         const t = e.touches?.[0];
         if (!t) return;
+        this.measure();
         this.startX = t.clientX;
         this.startY = t.clientY;
+        this.startDx = this.open ? -this.width : 0;
+        this.dx = this.startDx;
         this.dragging = true;
-        this.moved = false;
-        this.lockY = false;
-        this.dx = this.open ? -this.width : 0;
+        this.axis = null;
     },
 
     onMove(e) {
@@ -503,49 +519,72 @@ Alpine.data('swipeActions', (cfg = {}) => ({
         const rawX = t.clientX - this.startX;
         const rawY = t.clientY - this.startY;
 
-        if (!this.moved && Math.abs(rawY) > 10 && Math.abs(rawY) > Math.abs(rawX)) {
-            this.dragging = false;
-            this.lockY = true;
-            this.dx = this.open ? -this.width : 0;
-            return;
+        if (this.axis === null) {
+            if (Math.abs(rawX) < 8 && Math.abs(rawY) < 8) return;
+            this.axis = Math.abs(rawX) >= Math.abs(rawY) ? 'x' : 'y';
+            if (this.axis === 'y') {
+                // Vertical scroll — abandon swipe, let the list scroll.
+                this.dragging = false;
+                this.dx = this.startDx;
+                if (this._front) this._front.style.touchAction = '';
+                return;
+            }
+            if (this._front) this._front.style.touchAction = 'none';
         }
 
-        if (Math.abs(rawX) > 6) {
-            this.moved = true;
-            e.preventDefault();
-        }
+        if (this.axis !== 'x') return;
 
-        let x = (this.open ? -this.width : 0) + rawX;
-        x = Math.min(0, Math.max(-this.width, x));
-        this.dx = x;
+        e.preventDefault();
+        this.ignoreTap = true;
+        this.dx = Math.min(0, Math.max(-this.width, this.startDx + rawX));
     },
 
     onEnd() {
-        if (this.lockY) {
-            this.lockY = false;
+        if (this._front) this._front.style.touchAction = '';
+
+        if (this.axis === 'y') {
+            this.axis = null;
+            this.dragging = false;
             return;
         }
-        if (!this.dragging) {
+
+        if (this.axis !== 'x') {
+            this.dragging = false;
             this.dx = this.open ? -this.width : 0;
+            this.axis = null;
             return;
         }
+
         this.dragging = false;
-        this.open = this.dx < -(this.width / 2);
-        this.dx = this.open ? -this.width : 0;
+        this.axis = null;
+
+        // Stay open past ~32% (easier than 50% on small phones).
+        const shouldOpen = this.dx <= -(this.width * 0.32);
+        this.open = shouldOpen;
+        this.dx = shouldOpen ? -this.width : 0;
+
         if (this.open) {
             window.dispatchEvent(new CustomEvent('swipe-open', { detail: this.$el }));
         }
+
+        // Block the synthetic click that follows touchend (would close / navigate).
+        this.ignoreTap = true;
+        clearTimeout(this._ignoreTimer);
+        this._ignoreTimer = setTimeout(() => {
+            this.ignoreTap = false;
+        }, 400);
     },
 
     close() {
         this.open = false;
         this.dx = 0;
         this.dragging = false;
-        this.moved = false;
+        this.axis = null;
+        if (this._front) this._front.style.touchAction = '';
     },
 
     tap(url) {
-        if (this.moved) return;
+        if (this.ignoreTap) return;
         if (this.open) {
             this.close();
             return;
@@ -554,6 +593,13 @@ Alpine.data('swipeActions', (cfg = {}) => ({
     },
 
     init() {
+        this._front = this.$el.querySelector('.swipe-front');
+        this.measure();
+
+        // Non-passive so preventDefault actually stops iOS rubber-band / scroll steal.
+        this._onMove = (e) => this.onMove(e);
+        this._front?.addEventListener('touchmove', this._onMove, { passive: false });
+
         this._onOther = (e) => {
             if (e.detail !== this.$el) this.close();
         };
@@ -561,7 +607,9 @@ Alpine.data('swipeActions', (cfg = {}) => ({
     },
 
     destroy() {
+        this._front?.removeEventListener('touchmove', this._onMove);
         window.removeEventListener('swipe-open', this._onOther);
+        clearTimeout(this._ignoreTimer);
     },
 }));
 
