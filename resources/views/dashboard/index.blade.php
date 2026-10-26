@@ -39,9 +39,17 @@
     <div class="card-x">
         <div class="empty">
             <i class="bi bi-calendar-x"></i>
-            <div class="fw-bold text-dark">No record for this day</div>
-            <div class="small">Nothing was entered on {{ $date->format('d M Y') }}.</div>
-            <a href="{{ route('dashboard') }}" class="btn-xl btn-sm-x btn-ghost mt-3">Back to today</a>
+            @if (! empty($blockedByOpenDay))
+                <div class="fw-bold text-dark">{{ $date->format('d M Y') }} abhi open nahi ho sakta</div>
+                <div class="small">Pehle <strong>{{ $blockedByOpenDay->business_date->format('d M Y') }}</strong> close karein — us ke baad yeh din khulega.</div>
+                <a href="{{ route('dashboard', ['date' => $blockedByOpenDay->business_date->toDateString()]) }}" class="btn-xl btn-sm-x btn-blue mt-3">
+                    {{ $blockedByOpenDay->business_date->format('d M Y') }} kholo
+                </a>
+            @else
+                <div class="fw-bold text-dark">No record for this day</div>
+                <div class="small">Nothing was entered on {{ $date->format('d M Y') }}.</div>
+                <a href="{{ route('dashboard') }}" class="btn-xl btn-sm-x btn-ghost mt-3">Back to today</a>
+            @endif
         </div>
     </div>
 @else

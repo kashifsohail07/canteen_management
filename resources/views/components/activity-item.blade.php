@@ -10,6 +10,7 @@
         'purchase' => 'Paid',
         'vendor_payment' => 'Balance',
         'customer_udhaar', 'customer_payment' => 'Balance',
+        'vendor_balance_adjust', 'customer_balance_adjust' => 'Ab',
         'owner_deposit', 'owner_repayment' => 'Owner bal.',
         'rent_reserve' => 'Reserve',
         'rent_payment' => 'Baqi',
