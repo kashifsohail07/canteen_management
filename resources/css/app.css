@@ -1913,12 +1913,16 @@ a {
     height: 42px;
     display: grid;
     place-items: center;
+    padding: 0;
     color: var(--brand-blue);
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: 14px;
     font-size: 1.1rem;
     box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 .date-nav .nav-btn.disabled {

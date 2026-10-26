@@ -128,10 +128,19 @@ class CorrectTransactionWithAuditTest extends TestCase
             $this->assertArrayHasKey('business_date', $e->errors());
         }
 
-        // Home redirects to the still-open day (not a duplicate "today" feed)
+        // Home redirects to the still-open day with close-first prompt
         $this->actingAs($this->admin)
             ->get(route('dashboard'))
-            ->assertRedirect(route('dashboard', ['date' => $yesterday->toDateString()]));
+            ->assertRedirect(route('dashboard', [
+                'date' => $yesterday->toDateString(),
+                'need_close' => 1,
+            ]));
+
+        $this->actingAs($this->admin)
+            ->get(route('dashboard', ['date' => $yesterday->toDateString(), 'need_close' => 1]))
+            ->assertOk()
+            ->assertSee('Please close day first', false)
+            ->assertDontSee('Close day', false);
 
         Carbon::setTestNow();
     }

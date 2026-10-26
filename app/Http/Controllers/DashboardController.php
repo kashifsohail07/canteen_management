@@ -37,13 +37,16 @@ class DashboardController extends Controller
 
         $date = $this->requestedDate($request);
 
-        // Home / "today" while a previous day is still open → go to that working day
-        // (so 27 Oct does not show 26 Oct's activity under today's label).
+        // Home / "today" (or any later day) while a previous day is still open →
+        // send them back to that working day with a close-first prompt.
         if ($date->isToday()) {
             $this->sessions->discardEmptyPrematureSessions($date);
-            if ($earlier = $this->sessions->latestOpenBefore($date)) {
+        }
+        if ($earlier = $this->sessions->latestOpenBefore($date)) {
+            if ($date->gt($earlier->business_date)) {
                 return redirect()->route('dashboard', [
                     'date' => $earlier->business_date->toDateString(),
+                    'need_close' => 1,
                 ]);
             }
         }
@@ -76,9 +79,7 @@ class DashboardController extends Controller
             'topDate' => $date,
             'vendorCount' => Vendor::count(),
             'customerCount' => Customer::count(),
-            'blockedByOpenDay' => (! $session && ! $isToday)
-                ? $this->sessions->latestOpenBefore($date)
-                : null,
+            'needClosePopup' => $request->boolean('need_close') && ($session?->isOpen() ?? false),
         ]);
     }
 
