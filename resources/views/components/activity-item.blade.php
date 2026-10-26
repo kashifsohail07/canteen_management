@@ -29,58 +29,9 @@
     $purchaseV2 = $isPurchase && ($meta['layout'] ?? null) === 'purchase_v2';
     $qtyLabel = $purchaseV2 && ! empty($meta['qty_label']) ? $meta['qty_label'] : null;
     $detailUrl = route('activity.show', $a);
-    $canSwipeSale = (bool) auth()->user()?->isSuperUser()
-        && $isSale
-        && $a->reference_id
-        && ($dayOpen !== false);
 @endphp
 
-@if ($canSwipeSale)
-    <div class="swipe-row" x-data="swipeActions()" data-activity-id="{{ $a->id }}">
-        <div class="swipe-actions">
-            <a href="{{ $detailUrl }}" class="swipe-action swipe-edit" @click.stop>
-                <i class="bi bi-pencil-fill"></i>
-                <small>Edit</small>
-            </a>
-            <form method="POST" action="{{ route('sales.destroy', $a->reference_id) }}" class="m-0"
-                  @click.stop
-                  onsubmit="return confirm('Yeh sale delete karein?\n\nCash reverse ho jayega aur list se hat jayegi.')">
-                @csrf
-                @method('DELETE')
-                <input type="hidden" name="reason" value="Deleted from activity swipe (duplicate / mistake)">
-                <button type="submit" class="swipe-action swipe-delete" @click.stop>
-                    <i class="bi bi-trash-fill"></i>
-                    <small>Delete</small>
-                </button>
-            </form>
-        </div>
-        <div class="swipe-front act act-{{ $color }}"
-             role="link"
-             tabindex="0"
-             :class="{ 'is-open': open, 'is-dragging': dragging }"
-             :style="'transform: translateX(' + dx + 'px)'"
-             @touchstart.passive="onStart($event)"
-             @touchend.passive="onEnd()"
-             @touchcancel.passive="onEnd()"
-             @click.prevent="tap('{{ $detailUrl }}')"
-             @keydown.enter="window.location = '{{ $detailUrl }}'">
-            <span class="act-icon"><i class="bi {{ \App\Support\Labels::activityIcon($a->activity_type) }}"></i></span>
-            <span class="act-body">
-                <span class="act-title d-block">{{ $title }}@if ($a->has_image) <i class="bi bi-image text-muted ms-1" title="Bill photo"></i>@endif</span>
-                @if ($a->summary)<span class="act-sub d-block">{{ $a->summary }}</span>@endif
-                <span class="act-time">{{ $a->recorded_at->format('h:i A') }}</span>
-            </span>
-            <span class="act-aside">
-                <span class="badge-soft green pc-pill">Sale</span>
-                @if ($a->amount !== null)
-                    <span class="act-amount">
-                        {{ $sign }}{{ \App\Support\Money::format($a->amount) }}
-                    </span>
-                @endif
-            </span>
-        </div>
-    </div>
-@elseif ($isPurchase)
+@if ($isPurchase)
     <a href="{{ $detailUrl }}" class="purchase-card" data-activity-id="{{ $a->id }}">
         <div class="pc-head">
             <span class="pc-icon"><i class="bi bi-basket2-fill"></i></span>
@@ -124,7 +75,7 @@
             @if ($a->summary)<span class="act-sub d-block">{{ $a->summary }}</span>@endif
             <span class="act-time">{{ $a->recorded_at->format('h:i A') }}</span>
         </span>
-            <span class="act-aside">
+        <span class="act-aside">
             @if ($isSale)
                 <span class="badge-soft green pc-pill">Sale</span>
             @elseif ($a->activity_type === 'customer_udhaar')
