@@ -170,14 +170,10 @@
 
     <template x-if="vendor">
         <div class="save-bar">
-            <div class="row-btns save-split">
-                <button type="submit" name="next" value="0" class="btn-xl btn-save" :class="{ disabled: submitting }">
+            <div class="row-btns">
+                <button type="submit" class="btn-xl btn-save" :class="{ disabled: submitting }">
                     <span x-show="!submitting"><i class="bi bi-check2-circle"></i> Save</span>
                     <span x-show="submitting" x-cloak class="busy-inline"><span class="spinner-dot"></span> Saving…</span>
-                </button>
-                <button type="submit" name="next" value="1" class="btn-xl btn-next" :class="{ disabled: submitting }">
-                    <span x-show="!submitting"><i class="bi bi-arrow-repeat"></i> Save & Next</span>
-                    <span x-show="submitting" x-cloak>…</span>
                 </button>
             </div>
         </div>

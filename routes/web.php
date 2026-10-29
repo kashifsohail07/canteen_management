@@ -98,6 +98,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/daily', [ReportController::class, 'daily'])->name('reports.daily');
+    Route::get('/reports/daily-mini', [ReportController::class, 'dailyMini'])->name('reports.daily-mini');
     Route::get('/reports/vendors', [ReportController::class, 'vendors'])->name('reports.vendors');
     Route::get('/reports/vendor/{vendor}', [ReportController::class, 'vendor'])->name('reports.vendor');
     Route::get('/reports/monthly', [ReportController::class, 'monthly'])->name('reports.monthly');
@@ -144,6 +145,8 @@ Route::middleware(['auth', 'active', 'admin'])->group(function () {
 Route::middleware(['auth', 'active', 'super_user'])->group(function () {
     Route::put('/sales/{sale}', [SaleController::class, 'update'])->name('sales.update');
     Route::delete('/sales/{sale}', [SaleController::class, 'destroy'])->name('sales.destroy');
+    Route::delete('/purchases/{purchase}', [PurchaseController::class, 'destroy'])->name('purchases.destroy');
+    Route::delete('/payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::get('/users/create', [UserController::class, 'create'])->name('users.create');

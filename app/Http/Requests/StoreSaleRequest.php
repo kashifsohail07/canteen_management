@@ -15,7 +15,6 @@ class StoreSaleRequest extends FormRequest
         return [
             'sale_segment_id' => ['required', 'integer', Rule::exists('sale_segments', 'id')->where('is_active', true)],
             'amount' => $this->amountRules(),
-            'next' => ['nullable', 'boolean'],
         ] + $this->commonRules();
     }
 

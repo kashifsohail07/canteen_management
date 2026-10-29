@@ -3,82 +3,18 @@
 @section('title', $activity->title)
 
 @use('App\Support\Money')
-@use('App\Support\Labels')
 
 @section('content')
 @php
-    $color = $activity->color instanceof \BackedEnum ? $activity->color->value : (string) $activity->color;
-    $sign = Labels::activitySign($activity->activity_type);
     $back = route('dashboard', $activity->dailySession->business_date->isToday() ? [] : ['date' => $activity->dailySession->business_date->toDateString()]);
     $meta = $details['meta'] ?? [];
     $sections = $details['sections'] ?? [];
-    $title = $activity->title;
-    if ($activity->activity_type === 'purchase' && str_starts_with($title, 'Purchase from ')) {
-        $title = substr($title, strlen('Purchase from '));
-    }
-    if ($activity->activity_type === 'sale' && str_starts_with($title, 'Sale – ')) {
-        $title = substr($title, strlen('Sale – '));
-    }
-    $activityMeta = is_array($activity->meta) ? $activity->meta : [];
-    $purchaseLayout = $activity->activity_type === 'purchase' && ($activityMeta['layout'] ?? null) === 'purchase_v2';
-    $qtyLabel = ($purchaseLayout && ! empty($activityMeta['qty_label'])) ? $activityMeta['qty_label'] : null;
-    $purchaseTotal = $purchaseLayout
-        ? ($activityMeta['bill'] ?? Money::format($activity->amount))
-        : Money::format($activity->amount);
 @endphp
 
 <x-page-header title="Entry Detail" :sub="$activity->recorded_at->format('D, d M Y · h:i A')" :back="$back" />
 
 <div class="act-list mb-3">
-    @if ($activity->activity_type === 'purchase')
-        <div class="purchase-card">
-            <div class="pc-head">
-                <span class="pc-icon" style="width:48px;height:48px;font-size:1.25rem"><i class="bi bi-basket2-fill"></i></span>
-                <span class="pc-head-body">
-                    <span class="pc-name" style="font-size:1.05rem">{{ $title }}</span>
-                    <span class="pc-when">{{ $activity->recorded_at->format('h:i A') }} · {{ $activity->recorded_at->format('d M Y') }}</span>
-                </span>
-                <span class="badge-soft orange pc-pill">Purchase</span>
-            </div>
-            <div class="pc-stats {{ $qtyLabel ? '' : 'pc-stats-total-only' }}">
-                @if ($qtyLabel)
-                    <div class="pc-stat">
-                        <span class="pc-stat-label">Qty</span>
-                        <span class="pc-stat-value">{{ $qtyLabel }}</span>
-                    </div>
-                    <span class="pc-stats-divider" aria-hidden="true"></span>
-                @endif
-                <div class="pc-stat">
-                    <span class="pc-stat-label">Total</span>
-                    <span class="pc-stat-value pc-stat-total">{{ $purchaseTotal }}</span>
-                </div>
-            </div>
-            @if ($purchaseLayout && ! empty($activityMeta['balance']))
-                <div class="pc-balance">
-                    <span>Total Balance</span>
-                    <strong>{{ $activityMeta['balance'] }}</strong>
-                </div>
-            @endif
-        </div>
-    @else
-        <div class="act act-{{ $color }}" style="padding:18px 16px">
-            <span class="act-icon" style="width:52px;height:52px;font-size:1.4rem"><i class="bi {{ Labels::activityIcon($activity->activity_type) }}"></i></span>
-            <span class="act-body">
-                <span class="act-title d-block fs-5">{{ $title }}</span>
-                @if ($activity->summary)
-                    <span class="act-sub d-block" style="-webkit-line-clamp:unset">{{ $activity->summary }}</span>
-                @endif
-            </span>
-            <span class="act-aside">
-                @if ($activity->activity_type === 'sale')
-                    <span class="badge-soft green pc-pill">Sale</span>
-                @endif
-                @if ($activity->amount !== null)
-                    <span class="act-amount fs-5">{{ $sign }}{{ Money::format($activity->amount) }}</span>
-                @endif
-            </span>
-        </div>
-    @endif
+    <x-activity-item :activity="$activity" :linked="false" />
 </div>
 
 @if ($hasImage)
@@ -215,6 +151,78 @@
 @elseif (auth()->user()?->isSuperUser() && ($record instanceof \App\Models\Sale) && $activity->dailySession->isClosed())
     <div class="card-x">
         <div class="field-hint mb-0"><i class="bi bi-lock-fill"></i> Day is closed — reopen first, then sale can be edited / deleted.</div>
+    </div>
+@endif
+
+@if ($canDeletePurchase ?? false)
+    <div class="card-x" x-data="{ open: false, submitting: false }">
+        <div class="card-title text-danger">Delete Mall / Purchase</div>
+        <div class="field-hint mb-2">Ghalti se entry? Delete se vendor balance aur cash wapas adjust honge, activity se hat jayegi.</div>
+
+        <button type="button" class="btn-xl btn-sm-x btn-danger-soft w-100" x-show="!open" @click="open = true">
+            <i class="bi bi-trash-fill"></i> Delete this purchase
+        </button>
+
+        <form method="POST" action="{{ route('purchases.destroy', $record) }}" x-show="open" x-cloak
+              @submit="if (submitting) { $event.preventDefault() } else { submitting = true }"
+              onsubmit="return confirm('Yeh mall permanently delete karein?\n\nVendor balance + cash reverse ho jayega.')">
+            @csrf
+            @method('DELETE')
+
+            <div class="field">
+                <label for="delete_purchase_reason">Reason (required)</label>
+                <input type="text" id="delete_purchase_reason" name="reason" class="form-control-x" maxlength="500"
+                       required value="{{ old('reason') }}" placeholder="e.g. Double entry by mistake">
+                @error('reason')<div class="field-error">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button" class="btn-xl btn-sm-x btn-ghost flex-fill" @click="open = false">Cancel</button>
+                <button type="submit" class="btn-xl btn-sm-x btn-danger-soft flex-fill" :class="{ disabled: submitting }">
+                    <i class="bi bi-trash-fill"></i> Confirm delete
+                </button>
+            </div>
+        </form>
+    </div>
+@elseif (auth()->user()?->isSuperUser() && ($record instanceof \App\Models\Purchase) && $activity->dailySession->isClosed())
+    <div class="card-x">
+        <div class="field-hint mb-0"><i class="bi bi-lock-fill"></i> Day is closed — reopen first, then purchase can be deleted.</div>
+    </div>
+@endif
+
+@if ($canDeletePayment ?? false)
+    <div class="card-x" x-data="{ open: false, submitting: false }">
+        <div class="card-title text-danger">Delete Payment</div>
+        <div class="field-hint mb-2">Ghalti se payment? Delete se vendor balance aur cash / pocket wapas adjust honge.</div>
+
+        <button type="button" class="btn-xl btn-sm-x btn-danger-soft w-100" x-show="!open" @click="open = true">
+            <i class="bi bi-trash-fill"></i> Delete this payment
+        </button>
+
+        <form method="POST" action="{{ route('payments.destroy', $record) }}" x-show="open" x-cloak
+              @submit="if (submitting) { $event.preventDefault() } else { submitting = true }"
+              onsubmit="return confirm('Yeh payment permanently delete karein?\n\nVendor balance + cash reverse ho jayega.')">
+            @csrf
+            @method('DELETE')
+
+            <div class="field">
+                <label for="delete_payment_reason">Reason (required)</label>
+                <input type="text" id="delete_payment_reason" name="reason" class="form-control-x" maxlength="500"
+                       required value="{{ old('reason') }}" placeholder="e.g. Wrong amount / double pay">
+                @error('reason')<div class="field-error">{{ $message }}</div>@enderror
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="button" class="btn-xl btn-sm-x btn-ghost flex-fill" @click="open = false">Cancel</button>
+                <button type="submit" class="btn-xl btn-sm-x btn-danger-soft flex-fill" :class="{ disabled: submitting }">
+                    <i class="bi bi-trash-fill"></i> Confirm delete
+                </button>
+            </div>
+        </form>
+    </div>
+@elseif (auth()->user()?->isSuperUser() && ($record instanceof \App\Models\VendorPayment) && $activity->dailySession->isClosed())
+    <div class="card-x">
+        <div class="field-hint mb-0"><i class="bi bi-lock-fill"></i> Day is closed — reopen first, then payment can be deleted.</div>
     </div>
 @endif
 

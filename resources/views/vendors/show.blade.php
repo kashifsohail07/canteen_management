@@ -24,6 +24,27 @@
     <div class="meta"><span>Opening {{ Money::format($vendor->opening_balance) }}</span></div>
 </section>
 
+@if ($qtyStats)
+    <div class="card-x">
+        <div class="card-title"><i class="bi bi-box-seam"></i> Quantity</div>
+        <div class="dash-overview" style="grid-template-columns:repeat(3,1fr);margin-bottom:8px">
+            <div class="dash-mini" style="text-align:center;padding:12px 8px">
+                <span class="dash-kicker">Aaj</span>
+                <strong>{{ $qtyStats['today'] }}</strong>
+            </div>
+            <div class="dash-mini" style="text-align:center;padding:12px 8px">
+                <span class="dash-kicker">Overall</span>
+                <strong>{{ $qtyStats['overall'] }}</strong>
+            </div>
+            <div class="dash-mini" style="text-align:center;padding:12px 8px">
+                <span class="dash-kicker">Avg / day</span>
+                <strong>{{ $qtyStats['average'] }}</strong>
+            </div>
+        </div>
+        <div class="field-hint mb-0">{{ $qtyStats['orders'] }} orders · {{ $qtyStats['days'] }} days</div>
+    </div>
+@endif
+
 <div class="action-grid">
     <a href="{{ route('purchases.create', ['vendor' => $vendor->id]) }}" class="action-tile tile-blue" style="min-height:84px">
         <i class="bi bi-basket2-fill"></i><span>Add Mall</span>
@@ -36,7 +57,6 @@
 <div class="d-flex gap-2 mb-3 no-print">
     <a href="{{ route('reports.vendor', $vendor) }}" class="btn-xl btn-sm-x btn-ghost flex-fill"><i class="bi bi-file-earmark-text"></i> Ledger</a>
     <a href="{{ route('reports.vendor', [$vendor, 'format' => 'pdf']) }}" class="btn-xl btn-sm-x btn-outline-x flex-fill"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
-    <a href="{{ route('reports.vendor', [$vendor, 'format' => 'csv']) }}" class="btn-xl btn-sm-x btn-outline-x flex-fill"><i class="bi bi-filetype-csv"></i> CSV</a>
 </div>
 
 @if ($vendor->notes)
@@ -91,7 +111,7 @@
             @php
                 $isDebit = bccomp((string) $entry->debit, '0', 2) > 0;
                 $purchase = $entry->reference_type === 'purchase' ? $purchases->get($entry->reference_id) : null;
-                $linkActivity = null;
+                $qtyLabel = $purchase ? \App\Support\PurchaseActivityCard::totalQtyNumber(collect([$purchase])) : null;
             @endphp
             <div class="list-row">
                 @if ($purchase && $purchase->bill_image_path)
@@ -105,7 +125,7 @@
                 @endif
                 <div class="grow">
                     <div class="name">{{ Labels::ledgerEntry($entry->entry_type) }}</div>
-                    <div class="meta">{{ $entry->recorded_at->format('d M Y, h:i A') }}</div>
+                    <div class="meta">{{ $entry->recorded_at->format('d M Y, h:i A') }}@if ($qtyLabel) · Qty {{ $qtyLabel }}@endif</div>
                     @if ($entry->notes)<div class="meta text-truncate">{{ $entry->notes }}</div>@endif
                 </div>
                 <div class="val">

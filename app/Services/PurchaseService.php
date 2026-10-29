@@ -5,12 +5,15 @@ namespace App\Services;
 use App\Enums\ActivityColor;
 use App\Enums\CashAccountCode;
 use App\Enums\PaymentSource;
+use App\Models\ActivityLog;
 use App\Models\DailySession;
+use App\Models\OwnerTransaction;
 use App\Models\Purchase;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Models\VendorPayment;
 use App\Support\Money;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -25,6 +28,7 @@ class PurchaseService
         private OwnerLedgerService $owner,
         private ActivityLogService $activity,
         private ImageService $images,
+        private AuditService $audit,
     ) {}
 
     /**
@@ -165,9 +169,8 @@ class PurchaseService
             $vendor->forceFill(['last_used_at' => $now])->save();
 
             $this->activity->log(
-                $session, 'vendor_payment', 'Paid '.$vendor->name,
-                ($source === PaymentSource::PersonalPocket ? 'From personal pocket' : 'From canteen cash')
-                    .' · Balance '.Money::format($vendor->current_balance),
+                $session, 'vendor_payment', $vendor->name,
+                $source === PaymentSource::PersonalPocket ? 'From personal pocket' : 'From canteen cash',
                 $amount, $vendor->current_balance, ActivityColor::Red, $vendor, $payment, false, null, $user, $now,
             );
 
@@ -290,6 +293,199 @@ class PurchaseService
             $user,
             $purchase->recorded_at,
         );
+    }
+
+    /**
+     * Super User: delete a mistaken purchase (and any on-bill payments).
+     * Reverses vendor balance + cash/pocket, drops activity feed rows.
+     */
+    public function deletePurchase(Purchase $purchase, string $reason, User $user): void
+    {
+        $this->assertCanDelete($user, $reason);
+
+        $purchase->loadMissing('dailySession', 'vendor', 'payments');
+
+        if ($purchase->is_reversed) {
+            throw ValidationException::withMessages(['reason' => 'Yeh mall pehle hi delete / reverse ho chuka hai.']);
+        }
+        if ($purchase->dailySession->isClosed()) {
+            throw ValidationException::withMessages(['reason' => 'Pehle din reopen karein, phir mall delete karein.']);
+        }
+
+        DB::transaction(function () use ($purchase, $reason, $user) {
+            $locked = Purchase::whereKey($purchase->id)->lockForUpdate()->firstOrFail();
+            $locked->load('dailySession', 'vendor', 'payments');
+
+            if ($locked->is_reversed || $locked->dailySession->isClosed()) {
+                throw ValidationException::withMessages(['reason' => 'Yeh mall ab delete nahi ho sakta.']);
+            }
+
+            $vendor = $this->vendors->lockVendor($locked->vendor_id);
+            $now = now();
+            $bill = Money::of($locked->bill_amount);
+
+            $linkedPayments = VendorPayment::query()
+                ->where('purchase_id', $locked->id)
+                ->where('is_reversed', false)
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($linkedPayments as $payment) {
+                $this->reversePaymentRow($payment, $vendor, $user, $reason, $now);
+            }
+
+            $this->vendors->reversePurchaseEffect($vendor, $bill, [
+                'session' => $locked->dailySession,
+                'reference' => $locked,
+                'notes' => 'Mall delete: '.$reason,
+                'user' => $user,
+                'recorded_at' => $now,
+            ]);
+
+            $old = [
+                'vendor_id' => $locked->vendor_id,
+                'bill_amount' => $bill,
+                'paid_amount' => Money::of($locked->paid_amount),
+                'notes' => $locked->notes,
+            ];
+
+            $locked->update([
+                'is_reversed' => true,
+                'reversed_by' => $user->id,
+                'reversed_at' => $now,
+                'reversal_reason' => $reason,
+            ]);
+
+            ActivityLog::query()
+                ->where('reference_type', 'purchase')
+                ->where('reference_id', $locked->id)
+                ->delete();
+
+            foreach ($linkedPayments as $payment) {
+                ActivityLog::query()
+                    ->where('reference_type', 'vendor_payment')
+                    ->where('reference_id', $payment->id)
+                    ->delete();
+            }
+
+            $this->audit->log('purchase.deleted', $locked, $old, [
+                'is_reversed' => true,
+                'reversal_reason' => $reason,
+            ], $reason, $user);
+        });
+    }
+
+    /**
+     * Super User: delete a mistaken vendor payment.
+     * On-bill payments also reduce the linked purchase paid_amount.
+     */
+    public function deletePayment(VendorPayment $payment, string $reason, User $user): void
+    {
+        $this->assertCanDelete($user, $reason);
+
+        $payment->loadMissing('dailySession', 'vendor', 'purchase');
+
+        if ($payment->is_reversed) {
+            throw ValidationException::withMessages(['reason' => 'Yeh payment pehle hi delete / reverse ho chuki hai.']);
+        }
+        if ($payment->dailySession->isClosed()) {
+            throw ValidationException::withMessages(['reason' => 'Pehle din reopen karein, phir payment delete karein.']);
+        }
+
+        DB::transaction(function () use ($payment, $reason, $user) {
+            $locked = VendorPayment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+            $locked->load('dailySession', 'vendor', 'purchase');
+
+            if ($locked->is_reversed || $locked->dailySession->isClosed()) {
+                throw ValidationException::withMessages(['reason' => 'Yeh payment ab delete nahi ho sakti.']);
+            }
+
+            $vendor = $this->vendors->lockVendor($locked->vendor_id);
+            $now = now();
+            $amount = Money::of($locked->amount);
+
+            $this->reversePaymentRow($locked, $vendor, $user, $reason, $now);
+
+            if ($locked->purchase_id && $locked->purchase && ! $locked->purchase->is_reversed) {
+                $purchase = Purchase::whereKey($locked->purchase_id)->lockForUpdate()->first();
+                if ($purchase && ! $purchase->is_reversed) {
+                    $newPaid = Money::sub($purchase->paid_amount, $amount);
+                    if (Money::isNegative($newPaid)) {
+                        $newPaid = Money::zero();
+                    }
+                    $purchase->update([
+                        'paid_amount' => $newPaid,
+                        'new_balance' => $vendor->current_balance,
+                    ]);
+                }
+            }
+
+            ActivityLog::query()
+                ->where('reference_type', 'vendor_payment')
+                ->where('reference_id', $locked->id)
+                ->delete();
+
+            $this->audit->log('vendor_payment.deleted', $locked, [
+                'vendor_id' => $locked->vendor_id,
+                'amount' => $amount,
+                'payment_source' => $locked->payment_source,
+            ], [
+                'is_reversed' => true,
+                'reversal_reason' => $reason,
+            ], $reason, $user);
+        });
+    }
+
+    private function assertCanDelete(User $user, string $reason): void
+    {
+        if (! $user->isSuperUser()) {
+            throw new AuthorizationException('Only a super user can delete this entry.');
+        }
+
+        $reason = trim($reason);
+        if (strlen($reason) < 3) {
+            throw ValidationException::withMessages(['reason' => 'Delete ki wajah likhna zaroori hai.']);
+        }
+    }
+
+    private function reversePaymentRow(
+        VendorPayment $payment,
+        Vendor $vendor,
+        User $user,
+        string $reason,
+        mixed $now,
+    ): void {
+        $amount = Money::of($payment->amount);
+        $source = PaymentSource::tryFrom((string) $payment->payment_source) ?? PaymentSource::CanteenCash;
+        $session = $payment->dailySession;
+
+        $ctx = [
+            'session' => $session,
+            'reference' => $payment,
+            'notes' => 'Payment delete: '.$reason,
+            'user' => $user,
+            'recorded_at' => $now,
+        ];
+
+        $this->vendors->reversePaymentEffect($vendor, $amount, $ctx);
+
+        if ($source === PaymentSource::CanteenCash) {
+            $this->cash->credit(CashAccountCode::CanteenCash, $amount, 'reversal', $ctx);
+        } else {
+            $this->cash->debit(CashAccountCode::OwnerRecoverable, $amount, 'reversal', $ctx);
+            OwnerTransaction::query()
+                ->where('vendor_payment_id', $payment->id)
+                ->where('is_reversed', false)
+                ->update(['is_reversed' => true]);
+        }
+
+        $payment->update([
+            'is_reversed' => true,
+            'reversed_by' => $user->id,
+            'reversed_at' => $now,
+            'reversal_reason' => $reason,
+        ]);
     }
 
     /** Sum item quantities for the activity line (e.g. "200 pcs"). Null when no items. */

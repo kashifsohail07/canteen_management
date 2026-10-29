@@ -70,7 +70,6 @@ class DatabaseSeeder extends Seeder
 
             $vendors->createVendor([
                 'name' => $name,
-                'notes' => 'SAMPLE vendor - demo data',
                 'opening_balance' => $opening,
             ], $admin);
         }

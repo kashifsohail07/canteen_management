@@ -47,7 +47,7 @@ class Labels
             'udhaar' => 'Udhaar',
             'payment' => 'Payment',
             'adjustment' => 'Adjustment',
-            'reversal' => 'Reversal',
+            'reversal' => 'Reversal / Delete',
             default => Str::headline($type),
         };
     }
@@ -90,6 +90,39 @@ class Labels
             'sale', 'owner_deposit', 'customer_payment' => '+',
             'vendor_payment', 'expense', 'rent_payment', 'owner_repayment' => '−',
             default => '',
+        };
+    }
+
+    /** Feed card type pill: [label, badge color]. */
+    public static function activityPill(string $type): array
+    {
+        return match ($type) {
+            'purchase' => ['Purchase', 'orange'],
+            'sale' => ['Sale', 'green'],
+            'vendor_payment' => ['Payment', 'red'],
+            'customer_udhaar' => ['Udhaar', 'orange'],
+            'customer_payment' => ['Pay', 'green'],
+            'expense' => ['Expense', 'red'],
+            'owner_deposit' => ['Deposit', 'blue'],
+            'owner_repayment' => ['Wapsi', 'blue'],
+            'rent_reserve' => ['Rent Side', 'blue'],
+            'rent_payment' => ['Rent', 'blue'],
+            'rent_skip' => ['Skipped', 'blue'],
+            'day_closed' => ['Closed', 'red'],
+            'day_reopened' => ['Reopened', 'green'],
+            default => [Str::headline($type), 'blue'],
+        };
+    }
+
+    /** Label above the main amount on feed cards. */
+    public static function activityAmountLabel(string $type): string
+    {
+        return match ($type) {
+            'purchase' => 'Total',
+            'vendor_payment', 'rent_payment', 'expense', 'owner_repayment' => 'Paid',
+            'sale', 'owner_deposit', 'customer_payment', 'rent_reserve' => 'Amount',
+            'customer_udhaar' => 'Udhaar',
+            default => 'Amount',
         };
     }
 }

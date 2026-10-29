@@ -81,14 +81,15 @@ class VendorController extends Controller
             ->orderByDesc('id')
             ->paginate(25);
 
-        // purchases referenced on this page (for bill photos)
+        // purchases referenced on this page (for bill photos + qty)
         $purchaseIds = $entries->getCollection()->where('reference_type', 'purchase')->pluck('reference_id')->all();
-        $purchases = Purchase::whereIn('id', $purchaseIds)->get()->keyBy('id');
+        $purchases = Purchase::with('items')->whereIn('id', $purchaseIds)->get()->keyBy('id');
 
         return view('vendors.show', [
             'vendor' => $vendor,
             'entries' => $entries,
             'purchases' => $purchases,
+            'qtyStats' => \App\Support\PurchaseActivityCard::vendorQtyStats($vendor->id),
             'isAdmin' => (bool) request()->user()?->isAdmin(),
         ]);
     }

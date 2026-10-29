@@ -75,6 +75,7 @@ Alpine.data('txnForm', (cfg = {}) => ({
     bill: cfg.bill ?? '',
     paid: cfg.paid ?? '',
     amount: cfg.amount ?? '',
+    segmentId: cfg.segmentId ?? null,
     source: cfg.source || 'canteen_cash',
     counted: cfg.counted ?? '',
     expected: cfg.expected ?? 0,

@@ -129,7 +129,7 @@ class DashboardService
     /** Today's activity feed, newest first. */
     public function activity(DailySession $session, int $perPage = 20): LengthAwarePaginator
     {
-        return ActivityLog::with('vendor')
+        $page = ActivityLog::with('vendor')
             ->where('daily_session_id', $session->id)
             // Hide sales that were deleted (reversed) or zeroed out — cash already adjusted.
             ->where(function ($q) {
@@ -147,6 +147,10 @@ class DashboardService
             ->orderByDesc('recorded_at')
             ->orderByDesc('id')
             ->paginate($perPage);
+
+        \App\Support\PurchaseActivityCard::eagerLoadPurchases($page->getCollection());
+
+        return $page;
     }
 
     /**

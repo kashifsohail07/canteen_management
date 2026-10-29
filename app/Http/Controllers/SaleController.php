@@ -29,9 +29,9 @@ class SaleController extends Controller
         $date = $this->requestedDate($request);
         $session = $this->sessionForView($date, $request->user());
 
-        $selected = (int) $request->query('segment', $segments->first()?->id);
-        if (! $segments->contains('id', $selected)) {
-            $selected = (int) $segments->first()?->id;
+        $selected = $request->filled('segment') ? (int) $request->query('segment') : null;
+        if ($selected !== null && ! $segments->contains('id', $selected)) {
+            $selected = null;
         }
 
         return view('sales.create', [
@@ -52,16 +52,6 @@ class SaleController extends Controller
         $message = $sale->segment?->isRentSide()
             ? 'Rent Side rakh diya: '.Money::format($sale->amount)
             : 'Sale save ho gayi: '.Money::format($sale->amount).' ('.$sale->segment->name.')';
-
-        if ($request->boolean('next') && ! $request->expectsJson()) {
-            $ids = SaleSegment::where('is_active', true)->orderBy('sort_order')->orderBy('id')->pluck('id');
-            $idx = $ids->search($sale->sale_segment_id);
-            $nextId = $ids->get(($idx === false ? -1 : $idx) + 1) ?? $ids->first();
-
-            return redirect()
-                ->route('sales.create', array_filter(['segment' => $nextId, 'date' => $data['business_date'] ?? null]))
-                ->with('success', $message);
-        }
 
         return $this->succeed($request, $message, $sale->daily_session_id, $data['business_date'] ?? null);
     }

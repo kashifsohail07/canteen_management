@@ -14,7 +14,6 @@
 
 <div class="d-flex gap-2 mb-3 no-print">
     <a href="{{ route('reports.daily', $q + ['format' => 'pdf']) }}" class="btn-xl btn-sm-x btn-blue flex-fill"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
-    <a href="{{ route('reports.daily', $q + ['format' => 'csv']) }}" class="btn-xl btn-sm-x btn-ghost flex-fill"><i class="bi bi-filetype-csv"></i> CSV</a>
 </div>
 
 <div class="card-x">

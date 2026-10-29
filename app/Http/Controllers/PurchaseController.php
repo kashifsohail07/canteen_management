@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResolvesBusinessDate;
 use App\Http\Controllers\Concerns\RespondsToForms;
+use App\Http\Requests\DeletePurchaseRequest;
 use App\Http\Requests\StorePurchaseRequest;
 use App\Models\Purchase;
 use App\Models\Vendor;
@@ -133,13 +134,22 @@ class PurchaseController extends Controller
             .' · Bill '.Money::format($purchase->bill_amount)
             .'. New balance '.Money::format($purchase->new_balance);
 
-        if ($request->boolean('next') && ! $request->expectsJson()) {
-            return redirect()->route('purchases.create', array_filter([
-                'date' => $data['business_date'] ?? null,
-                'vendor' => $purchase->vendor_id,
-            ]))->with('success', $message);
-        }
-
         return $this->succeed($request, $message, $purchase->daily_session_id, $data['business_date'] ?? null);
+    }
+
+    /** Super User: delete a mistaken mall entry (reverses vendor balance + cash). */
+    public function destroy(DeletePurchaseRequest $request, Purchase $purchase, PurchaseService $purchases): RedirectResponse
+    {
+        $purchase->loadMissing('dailySession', 'vendor');
+        $date = $purchase->dailySession?->business_date;
+        $label = $purchase->vendor?->name.' · '.Money::format($purchase->bill_amount);
+
+        $purchases->deletePurchase($purchase, $request->validated('reason'), $request->user());
+
+        $params = ($date && ! $date->isToday()) ? ['date' => $date->toDateString()] : [];
+
+        return redirect()
+            ->route('dashboard', $params)
+            ->with('success', 'Mall delete ho gaya: '.$label);
     }
 }

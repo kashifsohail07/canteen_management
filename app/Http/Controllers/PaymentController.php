@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResolvesBusinessDate;
 use App\Http\Controllers\Concerns\RespondsToForms;
+use App\Http\Requests\DeletePaymentRequest;
 use App\Http\Requests\StorePaymentRequest;
 use App\Models\Purchase;
 use App\Models\Vendor;
@@ -175,5 +176,21 @@ class PaymentController extends Controller
                 'date' => $data['business_date'] ?? null,
             ]))
             ->with('success', $message);
+    }
+
+    /** Super User: delete a mistaken vendor payment (reverses cash + vendor balance). */
+    public function destroy(DeletePaymentRequest $request, VendorPayment $payment, PurchaseService $purchases): RedirectResponse
+    {
+        $payment->loadMissing('dailySession', 'vendor');
+        $date = $payment->dailySession?->business_date;
+        $label = Money::format($payment->amount).' → '.$payment->vendor?->name;
+
+        $purchases->deletePayment($payment, $request->validated('reason'), $request->user());
+
+        $params = ($date && ! $date->isToday()) ? ['date' => $date->toDateString()] : [];
+
+        return redirect()
+            ->route('dashboard', $params)
+            ->with('success', 'Payment delete ho gayi: '.$label);
     }
 }

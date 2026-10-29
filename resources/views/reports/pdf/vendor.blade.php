@@ -14,21 +14,46 @@
     <tr class="strong"><td>Closing balance</td><td>{{ Money::format($closing) }}</td></tr>
 </table>
 
+@if (! empty($qty_totals))
+    <h2>Quantity Totals (Period)</h2>
+    <table class="kv">
+        @foreach ($qty_totals as $item)
+            <tr><td>{{ $item['name'] }}</td><td>{{ $item['label'] }}</td></tr>
+        @endforeach
+    </table>
+@endif
+
 <h2>Ledger</h2>
 <table>
-    <thead><tr><th>Date</th><th>Type</th><th>Notes</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Qty</th>
+            <th>Notes</th>
+            <th class="num">Debit</th>
+            <th class="num">Credit</th>
+            <th class="num">Balance</th>
+        </tr>
+    </thead>
     <tbody>
         @forelse ($entries as $e)
+            @php
+                $qty = ($e->reference_type === 'purchase' && $e->reference_id)
+                    ? ($qty_by_purchase[$e->reference_id] ?? null)
+                    : null;
+            @endphp
             <tr>
                 <td>{{ $e->recorded_at->format('d M Y h:i A') }}</td>
                 <td>{{ Labels::ledgerEntry($e->entry_type) }}</td>
+                <td>{{ $qty ?: '—' }}</td>
                 <td>{{ $e->notes }}</td>
                 <td class="num">{{ bccomp((string) $e->debit, '0', 2) > 0 ? Money::format($e->debit, false) : '' }}</td>
                 <td class="num">{{ bccomp((string) $e->credit, '0', 2) > 0 ? Money::format($e->credit, false) : '' }}</td>
                 <td class="num">{{ Money::format($e->balance_after, false) }}</td>
             </tr>
         @empty
-            <tr><td colspan="6">No entries in this period.</td></tr>
+            <tr><td colspan="7">No entries in this period.</td></tr>
         @endforelse
     </tbody>
 </table>

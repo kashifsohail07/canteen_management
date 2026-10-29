@@ -48,10 +48,20 @@ class ActivityController extends Controller
             ]);
         }
 
-        $canEditSale = $request->user()?->isSuperUser()
+        $isSuper = (bool) $request->user()?->isSuperUser();
+        $dayOpen = $activityLog->dailySession->isOpen();
+        $canEditSale = $isSuper
             && $record instanceof Sale
             && ! $record->is_reversed
-            && $activityLog->dailySession->isOpen();
+            && $dayOpen;
+        $canDeletePurchase = $isSuper
+            && $record instanceof Purchase
+            && ! $record->is_reversed
+            && $dayOpen;
+        $canDeletePayment = $isSuper
+            && $record instanceof VendorPayment
+            && ! $record->is_reversed
+            && $dayOpen;
 
         return view('activity.show', [
             'activity' => $activityLog,
@@ -61,6 +71,8 @@ class ActivityController extends Controller
             'hasImage' => $hasImage,
             'topDate' => $activityLog->dailySession->business_date,
             'canEditSale' => $canEditSale,
+            'canDeletePurchase' => $canDeletePurchase,
+            'canDeletePayment' => $canDeletePayment,
             'segments' => $canEditSale
                 ? SaleSegment::where('is_active', true)->orderBy('sort_order')->orderBy('id')->get()
                 : collect(),

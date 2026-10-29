@@ -9,7 +9,8 @@
 @php
     $back = route('dashboard', $entryDate ? ['date' => $entryDate] : []);
     $locked = $session?->isClosed();
-    $selectedId = (int) old('sale_segment_id', $selected);
+    $selectedRaw = old('sale_segment_id', $selected);
+    $selectedId = $selectedRaw !== null && $selectedRaw !== '' ? (int) $selectedRaw : null;
 @endphp
 
 <x-page-header title="Add Sale" :sub="$entryDate ? 'Date: '.$date->format('d M Y') : 'Aaj ki bikri likhein'" :back="$back" />
@@ -31,7 +32,8 @@
     </div>
 @else
 <form method="POST" action="{{ route('sales.store') }}"
-      x-data="txnForm(@js(['key' => old('idempotency_key'), 'amount' => old('amount', '')]))"
+      x-data="txnForm(@js(['key' => old('idempotency_key'), 'amount' => old('amount', ''), 'segmentId' => $selectedId]))"
+      x-init="segmentId = @js($selectedId)"
       @submit="onSubmit($event)">
     <x-form-meta :date="$entryDate" />
 
@@ -40,7 +42,10 @@
         <div class="pill-group">
             @foreach ($segments as $segment)
                 <label class="m-0">
-                    <input type="radio" name="sale_segment_id" value="{{ $segment->id }}" @checked($selectedId === $segment->id) required>
+                    <input type="radio" name="sale_segment_id" value="{{ $segment->id }}"
+                           x-model.number="segmentId"
+                           @change="$nextTick(() => $refs.amountInput?.focus())"
+                           required>
                     <span class="pill">
                         {{ $segment->name }}
                         @if ($segment->is_rent_side)
@@ -54,7 +59,11 @@
         </div>
     </div>
 
-    <x-money-input name="amount" label="Sale Amount" x-model="amount" autofocus />
+    <template x-if="segmentId">
+        <div>
+            <x-money-input name="amount" label="Sale Amount" x-model="amount" x-ref="amountInput" />
+        </div>
+    </template>
 
     <div class="field">
         <label for="notes">Note (optional)</label>
@@ -71,10 +80,9 @@
     @endif
 
     <div class="save-bar">
-        <div class="row-btns two">
-            <button type="submit" class="btn-xl btn-ghost" :class="{ disabled: submitting }">Save</button>
-            <button type="submit" name="next" value="1" class="btn-xl btn-save" :class="{ disabled: submitting }">
-                <span x-show="!submitting"><i class="bi bi-check2-circle"></i> Save &amp; Next</span>
+        <div class="row-btns">
+            <button type="submit" class="btn-xl btn-save" :class="{ disabled: submitting }">
+                <span x-show="!submitting"><i class="bi bi-check2-circle"></i> Save</span>
                 <span x-show="submitting" x-cloak class="busy-inline"><span class="spinner-dot"></span> Save ho raha hai…</span>
             </button>
         </div>

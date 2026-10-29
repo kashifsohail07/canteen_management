@@ -59,16 +59,6 @@ class MultipleSalesInBreakTest extends TestCase
         $this->assertMoney(0, $this->canteenCash());
     }
 
-    public function test_save_and_next_moves_to_the_next_segment(): void
-    {
-        $first = $this->segment('first-break');
-        $second = $this->segment('second-break');
-
-        $this->actingAs($this->staff)
-            ->post('/sales', ['sale_segment_id' => $first->id, 'amount' => '100', 'next' => 1])
-            ->assertRedirect(route('sales.create', ['segment' => $second->id]));
-    }
-
     public function test_future_business_date_is_rejected(): void
     {
         $this->actingAs($this->staff)->post('/sales', [

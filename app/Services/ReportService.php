@@ -18,7 +18,7 @@ use App\Support\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
-/** Read-only data builders for the daily, vendor-ledger and monthly reports (HTML, PDF and CSV share them). */
+/** Read-only data builders for the daily, vendor-ledger and monthly reports (HTML and PDF share them). */
 class ReportService
 {
     public function __construct(
@@ -111,6 +111,99 @@ class ReportService
         ];
     }
 
+    /**
+     * Compact daily summary: only vendors/sales that had entries today.
+     * Per vendor: pehle balance · mall · payment · baqi.
+     *
+     * @return array<string, mixed>
+     */
+    public function dailyMini(DailySession $session): array
+    {
+        $live = fn ($model) => $model::where('daily_session_id', $session->id)->where('is_reversed', false);
+
+        $purchases = $live(Purchase::class)->with(['vendor', 'items'])->orderBy('recorded_at')->orderBy('id')->get();
+        $payments = $live(VendorPayment::class)->with('vendor')->orderBy('recorded_at')->orderBy('id')->get();
+        $expenses = $live(Expense::class)->with('category')->orderBy('recorded_at')->orderBy('id')->get();
+        $segments = $this->dashboard->segmentTotals($session)
+            ->filter(fn (array $row) => Money::isPositive($row['total']))
+            ->values();
+
+        $salesTotal = $segments->reduce(
+            fn (string $carry, array $row) => Money::add($carry, $row['total']),
+            Money::zero(),
+        );
+
+        $vendorIds = $purchases->pluck('vendor_id')->merge($payments->pluck('vendor_id'))->unique()->values();
+        $vendorNames = Vendor::withTrashed()->whereIn('id', $vendorIds)->pluck('name', 'id');
+
+        $vendorRows = $vendorIds->map(function (int $vendorId) use ($purchases, $payments, $vendorNames) {
+            $vPurchases = $purchases->where('vendor_id', $vendorId)->values();
+            $vPayments = $payments->where('vendor_id', $vendorId)->values();
+
+            $events = collect();
+            foreach ($vPurchases as $p) {
+                $events->push([
+                    'at' => $p->recorded_at,
+                    'id' => $p->id,
+                    'prev' => Money::of($p->previous_balance),
+                    'new' => Money::of($p->new_balance),
+                ]);
+            }
+            foreach ($vPayments as $pay) {
+                $events->push([
+                    'at' => $pay->recorded_at,
+                    'id' => $pay->id,
+                    'prev' => Money::of($pay->previous_balance),
+                    'new' => Money::of($pay->new_balance),
+                ]);
+            }
+            $events = $events->sortBy([['at', 'asc'], ['id', 'asc']])->values();
+
+            $mall = $vPurchases->reduce(
+                fn (string $carry, Purchase $p) => Money::add($carry, $p->bill_amount),
+                Money::zero(),
+            );
+            // VendorPayment rows already include on-bill payments — do not also sum purchase.paid_amount.
+            $paid = $vPayments->reduce(
+                fn (string $carry, VendorPayment $p) => Money::add($carry, $p->amount),
+                Money::zero(),
+            );
+
+            return [
+                'vendor_id' => $vendorId,
+                'name' => $vendorNames[$vendorId] ?? 'Vendor #'.$vendorId,
+                'opening' => $events->isNotEmpty() ? $events->first()['prev'] : Money::zero(),
+                'mall' => $mall,
+                'paid' => $paid,
+                'remaining' => $events->isNotEmpty() ? $events->last()['new'] : Money::zero(),
+                'qty_label' => self::qtyNumbersOnly($vPurchases),
+                'qty_items' => \App\Support\PurchaseActivityCard::itemQtyTotals($vPurchases),
+                'purchase_count' => $vPurchases->count(),
+                'payment_count' => $vPayments->count(),
+            ];
+        })->sortBy('name', SORT_NATURAL|SORT_FLAG_CASE)->values();
+
+        $expenseTotal = $expenses->reduce(
+            fn (string $carry, Expense $e) => Money::add($carry, $e->amount),
+            Money::zero(),
+        );
+
+        return [
+            'session' => $session,
+            'date' => $session->business_date,
+            'sales_total' => $salesTotal,
+            'segments' => $segments,
+            'vendor_rows' => $vendorRows,
+            'mall_total' => $vendorRows->reduce(fn (string $c, array $r) => Money::add($c, $r['mall']), Money::zero()),
+            'paid_total' => $vendorRows->reduce(fn (string $c, array $r) => Money::add($c, $r['paid']), Money::zero()),
+            'expenses' => $expenses,
+            'expense_total' => $expenseTotal,
+            'has_entries' => Money::isPositive($salesTotal)
+                || $vendorRows->isNotEmpty()
+                || $expenses->isNotEmpty(),
+        ];
+    }
+
     /** @return array<string, mixed> */
     public function vendorLedger(Vendor $vendor, ?Carbon $from = null, ?Carbon $to = null): array
     {
@@ -137,7 +230,13 @@ class ReportService
             ? Money::of($entries->last()->balance_after)
             : ($to && $to->lt(now()->startOfDay()) ? $opening : Money::of($vendor->current_balance));
 
-        $purchaseIds = $entries->where('reference_type', 'purchase')->pluck('reference_id');
+        $purchaseIds = $entries->where('reference_type', 'purchase')->pluck('reference_id')->filter()->unique()->values();
+        $purchases = Purchase::with('items')->whereIn('id', $purchaseIds)->get()->keyBy('id');
+
+        $qtyByPurchase = [];
+        foreach ($purchases as $id => $purchase) {
+            $qtyByPurchase[$id] = \App\Support\PurchaseActivityCard::qtyLabel($purchase);
+        }
 
         return [
             'vendor' => $vendor,
@@ -148,7 +247,9 @@ class ReportService
             'total_debit' => $debit,
             'total_credit' => $credit,
             'closing' => $closing,
-            'purchasesWithImage' => Purchase::whereIn('id', $purchaseIds)->whereNotNull('bill_image_path')->pluck('id')->all(),
+            'purchasesWithImage' => $purchases->filter(fn (Purchase $p) => $p->bill_image_path)->keys()->all(),
+            'qty_by_purchase' => $qtyByPurchase,
+            'qty_totals' => \App\Support\PurchaseActivityCard::itemQtyTotals($purchases),
         ];
     }
 
@@ -251,5 +352,16 @@ class ReportService
             'segments' => $segments,
             'vendors' => $vendors,
         ];
+    }
+
+    /** Qty as numbers only for compact tables, e.g. "200" or "200 + 50". */
+    private static function qtyNumbersOnly(iterable $purchases): ?string
+    {
+        $totals = \App\Support\PurchaseActivityCard::itemQtyTotals($purchases);
+        if ($totals === []) {
+            return null;
+        }
+
+        return collect($totals)->pluck('qty')->implode(' + ');
     }
 }

@@ -139,7 +139,134 @@ final class PurchaseActivityCard
             ->implode(' + ');
     }
 
-    private static function trimQty(string $qty): string
+    /**
+     * Totals by item name + unit across purchases (for daily / monthly qty checks).
+     *
+     * @param  iterable<int, Purchase>  $purchases
+     * @return list<array{name: string, unit: string, qty: string, label: string, display: string}>
+     */
+    public static function itemQtyTotals(iterable $purchases): array
+    {
+        $bags = [];
+
+        foreach ($purchases as $purchase) {
+            if (! $purchase instanceof Purchase) {
+                continue;
+            }
+            $items = $purchase->relationLoaded('items') ? $purchase->items : $purchase->items()->get();
+            foreach ($items as $item) {
+                $name = trim((string) $item->item_name) ?: 'Item';
+                $unit = $item->unit ?: 'pcs';
+                $key = mb_strtolower($name).'|'.mb_strtolower($unit);
+                if (! isset($bags[$key])) {
+                    $bags[$key] = ['name' => $name, 'unit' => $unit, 'qty' => '0'];
+                }
+                $bags[$key]['qty'] = bcadd($bags[$key]['qty'], (string) $item->quantity, 3);
+            }
+        }
+
+        return collect($bags)
+            ->map(function (array $row) {
+                $qty = self::trimQty($row['qty']);
+
+                return [
+                    'name' => $row['name'],
+                    'unit' => $row['unit'],
+                    'qty' => $qty,
+                    'label' => $qty.' '.$row['unit'],
+                    'display' => $row['name'].' '.$qty.' '.$row['unit'],
+                ];
+            })
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
+    }
+
+    /** Compact label e.g. "Samosa 200 pcs · Roll 50 pcs". */
+    public static function qtySummaryLabel(iterable $purchases): ?string
+    {
+        $totals = self::itemQtyTotals($purchases);
+
+        return $totals === [] ? null : collect($totals)->pluck('display')->implode(' · ');
+    }
+
+    /** Sum of all line quantities as a plain number (e.g. "200"). */
+    public static function totalQtyNumber(iterable $purchases): ?string
+    {
+        $total = '0';
+        $hasItems = false;
+
+        foreach ($purchases as $purchase) {
+            if (! $purchase instanceof Purchase) {
+                continue;
+            }
+            $items = $purchase->relationLoaded('items') ? $purchase->items : $purchase->items()->get();
+            foreach ($items as $item) {
+                $hasItems = true;
+                $total = bcadd($total, (string) $item->quantity, 3);
+            }
+        }
+
+        return $hasItems ? self::trimQty($total) : null;
+    }
+
+    /**
+     * Vendor qty card: today / overall / daily average (numbers only).
+     *
+     * @return array{today: string, overall: string, average: string, days: int, orders: int}|null
+     */
+    public static function vendorQtyStats(int $vendorId, ?\Illuminate\Support\Carbon $onDate = null): ?array
+    {
+        $onDate = $onDate?->copy()->startOfDay() ?? now()->startOfDay();
+        $todayKey = $onDate->toDateString();
+
+        $purchases = Purchase::query()
+            ->with('items')
+            ->where('vendor_id', $vendorId)
+            ->where('is_reversed', false)
+            ->whereHas('items')
+            ->orderBy('recorded_at')
+            ->orderBy('id')
+            ->get();
+
+        if ($purchases->isEmpty()) {
+            return null;
+        }
+
+        $rawOverall = '0';
+        $rawToday = '0';
+        $dayKeys = [];
+
+        foreach ($purchases as $purchase) {
+            $day = $purchase->recorded_at?->toDateString();
+            if ($day) {
+                $dayKeys[$day] = true;
+            }
+            foreach ($purchase->items as $item) {
+                $qty = (string) $item->quantity;
+                $rawOverall = bcadd($rawOverall, $qty, 3);
+                if ($day === $todayKey) {
+                    $rawToday = bcadd($rawToday, $qty, 3);
+                }
+            }
+        }
+
+        if (bccomp($rawOverall, '0', 3) <= 0) {
+            return null;
+        }
+
+        $days = count($dayKeys);
+
+        return [
+            'today' => self::trimQty($rawToday),
+            'overall' => self::trimQty($rawOverall),
+            'average' => $days > 0 ? self::trimQty(bcdiv($rawOverall, (string) $days, 3)) : '0',
+            'days' => $days,
+            'orders' => $purchases->count(),
+        ];
+    }
+
+    public static function trimQty(string $qty): string
     {
         return rtrim(rtrim(number_format((float) $qty, 3, '.', ''), '0'), '.') ?: '0';
     }

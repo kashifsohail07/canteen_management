@@ -20,7 +20,6 @@
     <div class="d-flex gap-2">
         <button type="submit" class="btn-xl btn-sm-x btn-blue flex-fill"><i class="bi bi-funnel"></i> Filter</button>
         <a href="{{ route('reports.vendor', [$vendor] + $q + ['format' => 'pdf']) }}" class="btn-xl btn-sm-x btn-ghost flex-fill"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
-        <a href="{{ route('reports.vendor', [$vendor] + $q + ['format' => 'csv']) }}" class="btn-xl btn-sm-x btn-outline-x flex-fill"><i class="bi bi-filetype-csv"></i> CSV</a>
     </div>
 </form>
 
@@ -31,20 +30,44 @@
     <div class="kv total"><span>Closing balance</span><span>{{ Money::format($closing) }}</span></div>
 </div>
 
+@if (! empty($qty_totals))
+    <div class="card-x">
+        <div class="card-title">Quantity (is muddat)</div>
+        @foreach ($qty_totals as $item)
+            <div class="kv"><span>{{ $item['name'] }}</span><span class="fw-bold">{{ $item['label'] }}</span></div>
+        @endforeach
+    </div>
+@endif
+
 <div class="tbl-wrap">
     <table class="tbl">
-        <thead><tr><th>Date</th><th>Qism</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Qism</th>
+                <th>Qty</th>
+                <th class="num">Debit</th>
+                <th class="num">Credit</th>
+                <th class="num">Balance</th>
+            </tr>
+        </thead>
         <tbody>
             @forelse ($entries as $e)
+                @php
+                    $qty = ($e->reference_type === 'purchase' && $e->reference_id)
+                        ? ($qty_by_purchase[$e->reference_id] ?? null)
+                        : null;
+                @endphp
                 <tr>
                     <td>{{ $e->recorded_at->format('d M, h:i A') }}</td>
                     <td>{{ Labels::ledgerEntry($e->entry_type) }}@if ($e->reference_type === 'purchase' && in_array($e->reference_id, $purchasesWithImage)) <a href="{{ route('invoices.show', $e->reference_id) }}" target="_blank" rel="noopener"><i class="bi bi-image"></i></a>@endif</td>
+                    <td>{{ $qty ?: '—' }}</td>
                     <td class="num text-owed">{{ bccomp((string) $e->debit, '0', 2) > 0 ? Money::format($e->debit, false) : '' }}</td>
                     <td class="num text-adv">{{ bccomp((string) $e->credit, '0', 2) > 0 ? Money::format($e->credit, false) : '' }}</td>
                     <td class="num fw-bold">{{ Money::format($e->balance_after, false) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="5" class="text-center text-muted py-4">Is muddat mein koi entry nahi.</td></tr>
+                <tr><td colspan="6" class="text-center text-muted py-4">Is muddat mein koi entry nahi.</td></tr>
             @endforelse
         </tbody>
     </table>

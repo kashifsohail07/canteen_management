@@ -154,6 +154,18 @@ class VendorLedgerService
         return $this->appendEntry($vendor, 'payment', Money::zero(), $this->positive($amount), $context);
     }
 
+    /** Undo a purchase: vendor balance goes DOWN (credit). */
+    public function reversePurchaseEffect(Vendor $vendor, string|int|float $amount, array $context = []): VendorLedgerEntry
+    {
+        return $this->appendEntry($vendor, 'reversal', Money::zero(), $this->positive($amount), $context);
+    }
+
+    /** Undo a payment: vendor balance goes UP (debit). */
+    public function reversePaymentEffect(Vendor $vendor, string|int|float $amount, array $context = []): VendorLedgerEntry
+    {
+        return $this->appendEntry($vendor, 'reversal', $this->positive($amount), Money::zero(), $context);
+    }
+
     /**
      * Admin-only: force the vendor balance to a new value with a mandatory reason.
      */

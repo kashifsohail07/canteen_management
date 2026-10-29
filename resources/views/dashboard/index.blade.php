@@ -46,7 +46,7 @@
     </div>
 @else
     {{-- 1. Today sales snapshot (top) --}}
-    <a class="dash-sales" href="{{ route('reports.daily', ['date' => $date->toDateString()]) }}">
+    <a class="dash-sales" href="{{ route('reports.daily-mini', ['date' => $date->toDateString()]) }}">
         <div class="dash-sales-main">
             <div class="dash-sales-hero">
                 <div class="dash-big" data-sales>{{ Money::format($summary['sales_today']) }}</div>
@@ -104,6 +104,7 @@
 
     <div class="dash-tools">
         <a href="{{ route('closing.show', $q) }}"><i class="bi bi-lock"></i> Close Day</a>
+        <a href="{{ route('reports.daily-mini', $q) }}"><i class="bi bi-file-earmark-text"></i> Daily Mini</a>
         <a href="{{ route('reports.index') }}"><i class="bi bi-bar-chart"></i> Reports</a>
         <a href="{{ route('vendors.index') }}"><i class="bi bi-people"></i> Vendors</a>
         <a href="{{ route('customers.index') }}"><i class="bi bi-person-badge"></i> Customers</a>

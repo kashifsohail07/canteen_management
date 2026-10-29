@@ -32,7 +32,6 @@ class StorePurchaseRequest extends FormRequest
             'items.*.quantity' => ['nullable', 'numeric', 'gt:0', 'max:999999'],
             'items.*.unit' => ['nullable', 'string', 'max:20'],
             'items.*.rate' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
-            'next' => ['nullable', 'boolean'],
         ] + $this->commonRules();
     }
 

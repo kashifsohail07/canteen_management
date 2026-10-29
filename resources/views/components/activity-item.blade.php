@@ -1,6 +1,7 @@
 @props([
     'activity',
     'dayOpen' => null,
+    'linked' => true,
 ])
 @php
     $a = $activity;
@@ -23,25 +24,78 @@
     if ($a->activity_type === 'sale' && str_starts_with($title, 'Sale – ')) {
         $title = substr($title, strlen('Sale – '));
     }
-    $meta = is_array($a->meta) ? $a->meta : [];
+    if ($a->activity_type === 'vendor_payment' && str_starts_with($title, 'Paid ')) {
+        $title = substr($title, strlen('Paid '));
+    }
+
     $isPurchase = $a->activity_type === 'purchase';
-    $isSale = $a->activity_type === 'sale';
-    $purchaseV2 = $isPurchase && ($meta['layout'] ?? null) === 'purchase_v2';
-    $qtyLabel = $purchaseV2 && ! empty($meta['qty_label']) ? $meta['qty_label'] : null;
+    $purchaseCard = $isPurchase ? \App\Support\PurchaseActivityCard::for($a) : null;
+    $qtyLabel = $purchaseCard['qty_label'] ?? null;
+    [$pillLabel, $pillColor] = \App\Support\Labels::activityPill($a->activity_type);
+    $amountLabel = \App\Support\Labels::activityAmountLabel($a->activity_type);
+
+    $amountText = null;
+    if ($purchaseCard) {
+        $amountText = $purchaseCard['bill'];
+    } elseif ($a->amount !== null) {
+        $amountText = $sign.\App\Support\Money::format($a->amount);
+    }
+
+    $balanceLabel = null;
+    $balanceValue = null;
+    if ($purchaseCard && ! empty($purchaseCard['balance'])) {
+        $balanceLabel = 'Total Balance';
+        $balanceValue = $purchaseCard['balance'];
+    } elseif ($a->secondary_amount !== null && $secondaryLabel) {
+        $balanceLabel = $secondaryLabel === 'Balance' ? 'Total Balance' : $secondaryLabel;
+        $balanceValue = \App\Support\Money::format($a->secondary_amount);
+    }
+
+    // Only show free-text summary when there is no structured amount/balance row.
+    $summaryHint = (! $amountText && ! $balanceValue && $a->summary)
+        ? str_replace("\n", ' · ', $a->summary)
+        : null;
+
+    $tone = match ($color) {
+        'red' => ['fg' => 'var(--pay-red)', 'bg' => 'var(--pay-red-soft)'],
+        'green' => ['fg' => 'var(--brand-green)', 'bg' => 'var(--brand-green-soft)'],
+        'orange' => ['fg' => 'var(--balance-orange)', 'bg' => 'var(--balance-orange-soft)'],
+        default => ['fg' => 'var(--brand-blue)', 'bg' => 'var(--brand-blue-soft)'],
+    };
+    // Purchases keep the orange basket look from the mockup.
+    if ($isPurchase) {
+        $tone = ['fg' => 'var(--balance-orange)', 'bg' => 'var(--balance-orange-soft)'];
+    }
+
     $detailUrl = route('activity.show', $a);
+    $tag = $linked ? 'a' : 'div';
 @endphp
 
-@if ($isPurchase)
-    <a href="{{ $detailUrl }}" class="purchase-card" data-activity-id="{{ $a->id }}">
-        <div class="pc-head">
-            <span class="pc-icon"><i class="bi bi-basket2-fill"></i></span>
-            <span class="pc-head-body">
-                <span class="pc-name">{{ $title }}@if ($a->has_image) <i class="bi bi-image text-muted ms-1" title="Bill photo"></i>@endif</span>
-                <span class="pc-when">{{ $a->recorded_at->format('h:i A') }} · {{ $a->recorded_at->format('d M Y') }}</span>
+<{{ $tag }}
+    @if ($linked) href="{{ $detailUrl }}" @endif
+    class="purchase-card act-card act-card-{{ $color }}"
+    data-activity-id="{{ $a->id }}"
+>
+    <div class="pc-head">
+        <span class="pc-icon" style="color: {{ $tone['fg'] }}; background: {{ $tone['bg'] }}">
+            <i class="bi {{ \App\Support\Labels::activityIcon($a->activity_type) }}"></i>
+        </span>
+        <span class="pc-head-body">
+            <span class="pc-name">
+                {{ $title }}
+                @if ($a->has_image)
+                    <i class="bi bi-image text-muted ms-1" title="Bill photo"></i>
+                @endif
             </span>
-            <span class="badge-soft orange pc-pill">Purchase</span>
-        </div>
+            <span class="pc-when">{{ $a->recorded_at->format('h:i A') }} · {{ $a->recorded_at->format('d M Y') }}</span>
+            @if ($summaryHint)
+                <span class="pc-when" style="margin-top:2px">{{ $summaryHint }}</span>
+            @endif
+        </span>
+        <span class="badge-soft {{ $pillColor }} pc-pill">{{ $pillLabel }}</span>
+    </div>
 
+    @if ($amountText !== null)
         <div class="pc-stats {{ $qtyLabel ? '' : 'pc-stats-total-only' }}">
             @if ($qtyLabel)
                 <div class="pc-stat">
@@ -51,46 +105,16 @@
                 <span class="pc-stats-divider" aria-hidden="true"></span>
             @endif
             <div class="pc-stat">
-                <span class="pc-stat-label">Total</span>
-                <span class="pc-stat-value pc-stat-total">{{ $purchaseV2 ? ($meta['bill'] ?? \App\Support\Money::format($a->amount)) : \App\Support\Money::format($a->amount) }}</span>
+                <span class="pc-stat-label">{{ $amountLabel }}</span>
+                <span class="pc-stat-value pc-stat-total" style="color: {{ $tone['fg'] }}">{{ $amountText }}</span>
             </div>
         </div>
+    @endif
 
-        @if ($purchaseV2 && ! empty($meta['balance']))
-            <div class="pc-balance">
-                <span>Total Balance</span>
-                <strong>{{ $meta['balance'] }}</strong>
-            </div>
-        @elseif ($a->summary)
-            <div class="pc-balance pc-balance-muted">
-                <span>{{ str_replace("\n", ' · ', $a->summary) }}</span>
-            </div>
-        @endif
-    </a>
-@else
-    <a href="{{ $detailUrl }}" class="act act-{{ $color }}" data-activity-id="{{ $a->id }}">
-        <span class="act-icon"><i class="bi {{ \App\Support\Labels::activityIcon($a->activity_type) }}"></i></span>
-        <span class="act-body">
-            <span class="act-title d-block">{{ $title }}@if ($a->has_image) <i class="bi bi-image text-muted ms-1" title="Bill photo"></i>@endif</span>
-            @if ($a->summary)<span class="act-sub d-block">{{ $a->summary }}</span>@endif
-            <span class="act-time">{{ $a->recorded_at->format('h:i A') }}</span>
-        </span>
-        <span class="act-aside">
-            @if ($isSale)
-                <span class="badge-soft green pc-pill">Sale</span>
-            @elseif ($a->activity_type === 'customer_udhaar')
-                <span class="badge-soft orange pc-pill">Udhaar</span>
-            @elseif ($a->activity_type === 'customer_payment')
-                <span class="badge-soft green pc-pill">Pay</span>
-            @endif
-            @if ($a->amount !== null)
-                <span class="act-amount">
-                    {{ $sign }}{{ \App\Support\Money::format($a->amount) }}
-                    @if ($a->secondary_amount !== null && $secondaryLabel)
-                        <small>{{ $secondaryLabel }} {{ \App\Support\Money::format($a->secondary_amount) }}</small>
-                    @endif
-                </span>
-            @endif
-        </span>
-    </a>
-@endif
+    @if ($balanceValue)
+        <div class="pc-balance">
+            <span>{{ $balanceLabel }}</span>
+            <strong>{{ $balanceValue }}</strong>
+        </div>
+    @endif
+</{{ $tag }}>

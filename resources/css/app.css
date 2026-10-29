@@ -839,6 +839,43 @@ a {
     line-height: 1.25;
 }
 
+.vendor-qty-card {
+    margin-bottom: 12px;
+}
+
+.vendor-qty-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.vendor-qty-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 8px;
+    text-align: center;
+    background: #f7f9fe;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+}
+
+.vendor-qty-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.vendor-qty-value {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
 .dash-overview {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2051,8 +2088,9 @@ a {
     background: #f8faff;
 }
 
-/* Purchase entry card (matches purchase history mockup) */
-.purchase-card {
+/* Shared activity feed card (purchase / payment / sale / …) */
+.purchase-card,
+.act-card {
     display: block;
     padding: 14px;
     color: var(--ink);
@@ -2063,9 +2101,26 @@ a {
 }
 
 .purchase-card:hover,
-.purchase-card:active {
+.purchase-card:active,
+.act-card:hover,
+.act-card:active {
     color: var(--ink);
     background: #fffdf8;
+}
+
+.act-card-red:hover,
+.act-card-red:active {
+    background: #fff8f8;
+}
+
+.act-card-green:hover,
+.act-card-green:active {
+    background: #f5fdf9;
+}
+
+.act-card-blue:hover,
+.act-card-blue:active {
+    background: #f8faff;
 }
 
 .pc-head {
@@ -2106,6 +2161,52 @@ a {
     margin-top: 1px;
     font-size: 0.72rem;
     color: var(--muted);
+}
+
+.pc-hint {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.act-card-red .pc-icon {
+    color: var(--pay-red);
+    background: var(--pay-red-soft);
+}
+
+.act-card-red .pc-stat-total {
+    color: var(--pay-red);
+}
+
+.act-card-green .pc-icon {
+    color: var(--brand-green);
+    background: var(--brand-green-soft);
+}
+
+.act-card-green .pc-stat-total {
+    color: var(--brand-green);
+}
+
+.act-card-orange .pc-icon {
+    color: var(--balance-orange);
+    background: var(--balance-orange-soft);
+}
+
+.act-card-orange .pc-stat-total {
+    color: var(--balance-orange);
+}
+
+.act-card-blue .pc-icon {
+    color: var(--brand-blue);
+    background: var(--brand-blue-soft);
+}
+
+.act-card-blue .pc-stat-total {
+    color: var(--brand-blue);
 }
 
 .pc-pill {
