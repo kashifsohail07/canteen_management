@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\ActivityColor;
+use App\Models\ActivityLog;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Models\VendorLedgerEntry;
@@ -25,7 +27,11 @@ class VendorLedgerService
 {
     use NormalizesContext;
 
-    public function __construct(private AuditService $audit) {}
+    public function __construct(
+        private AuditService $audit,
+        private ActivityLogService $activity,
+        private DailySessionService $sessions,
+    ) {}
 
     /**
      * @param  array{
@@ -197,6 +203,17 @@ class VendorLedgerService
 
             $this->audit->log('vendor.balance_adjusted', $locked, ['current_balance' => $old], ['current_balance' => $newBalance], $reason, $admin);
 
+            $this->logBalanceAdjustActivity(
+                $locked,
+                $old,
+                $newBalance,
+                $reason,
+                $admin,
+                $entry,
+                'Balance adjust',
+            );
+            $this->refreshVendorActivityBalances($locked);
+
             return $entry;
         });
     }
@@ -215,6 +232,7 @@ class VendorLedgerService
         return DB::transaction(function () use ($vendor, $newOpening, $reason, $admin) {
             $locked = $this->lockVendor($vendor);
             $oldOpening = Money::of($locked->opening_balance);
+            $oldBalance = Money::of($locked->current_balance);
             $delta = Money::sub($newOpening, $oldOpening);
 
             if (Money::isZero($delta)) {
@@ -234,8 +252,95 @@ class VendorLedgerService
 
             $this->audit->log('vendor.opening_balance_changed', $locked, ['opening_balance' => $oldOpening], ['opening_balance' => $newOpening], $reason, $admin);
 
+            $this->logBalanceAdjustActivity(
+                $locked,
+                $oldBalance,
+                Money::of($locked->current_balance),
+                'Opening: '.$reason,
+                $admin,
+                $entry,
+                'Opening balance',
+            );
+            $this->refreshVendorActivityBalances($locked);
+
             return $entry;
         });
+    }
+
+    /** Daily Activity row so homepage reflects ledger corrections (not only audit). */
+    private function logBalanceAdjustActivity(
+        Vendor $vendor,
+        string $oldBalance,
+        string $newBalance,
+        string $reason,
+        User $admin,
+        VendorLedgerEntry $entry,
+        string $titlePrefix,
+    ): void {
+        // Same working day as sales/purchases — never jump to a new calendar day
+        // while a previous day is still open.
+        $session = $this->sessions->openSessionFor(null, $admin);
+        $delta = Money::sub($newBalance, $oldBalance);
+
+        $this->activity->log(
+            $session,
+            'vendor_balance_adjust',
+            $titlePrefix.' · '.$vendor->name,
+            'Pehle '.Money::format($oldBalance).' → Ab '.Money::format($newBalance).' · '.$reason,
+            Money::abs($delta),
+            $newBalance,
+            ActivityColor::Blue,
+            $vendor,
+            $entry,
+            false,
+            [
+                'old_balance' => Money::format($oldBalance),
+                'new_balance' => Money::format($newBalance),
+                'reason' => $reason,
+            ],
+            $admin,
+        );
+    }
+
+    /**
+     * Keep purchase / payment activity "Total Balance" in sync with the live ledger
+     * after an admin adjustment (those cards store a snapshot at write time).
+     */
+    private function refreshVendorActivityBalances(Vendor $vendor): void
+    {
+        $balance = Money::of($vendor->current_balance);
+        $balanceFmt = Money::format($balance);
+
+        ActivityLog::query()
+            ->where('vendor_id', $vendor->id)
+            ->where('activity_type', 'vendor_payment')
+            ->update(['secondary_amount' => $balance]);
+
+        ActivityLog::query()
+            ->where('vendor_id', $vendor->id)
+            ->where('activity_type', 'purchase')
+            ->orderByDesc('id')
+            ->get()
+            ->each(function (ActivityLog $row) use ($balanceFmt) {
+                $meta = is_array($row->meta) ? $row->meta : [];
+                if (($meta['layout'] ?? null) === 'purchase_v2') {
+                    $meta['balance'] = $balanceFmt;
+                }
+
+                $summary = (string) ($row->summary ?? '');
+                if ($summary !== '') {
+                    $summary = preg_replace(
+                        '/Balance Rs\.?\s*[\d,]+(?:\.\d+)?/u',
+                        'Balance '.$balanceFmt,
+                        $summary,
+                    ) ?? $summary;
+                }
+
+                $row->update([
+                    'meta' => $meta === [] ? $row->meta : $meta,
+                    'summary' => $summary !== '' ? $summary : $row->summary,
+                ]);
+            });
     }
 
     private function appendEntry(Vendor $vendor, string $type, string $debit, string $credit, array $context): VendorLedgerEntry

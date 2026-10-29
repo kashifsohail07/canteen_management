@@ -43,14 +43,23 @@ trait ResolvesBusinessDate
     }
 
     /**
-     * Session to display: created on demand for today, looked up (never created) for past days.
+     * Session to display for a date.
+     * - Exact date lookup only (never show another day's activity under this date).
+     * - Today is created on demand only when no earlier day is still open.
      */
     protected function sessionForView(Carbon $date, ?User $user = null): ?DailySession
     {
         $sessions = app(DailySessionService::class);
 
-        return $date->isToday()
-            ? $sessions->getOrCreateForDate($date, $user)
-            : $sessions->findForDate($date);
+        if ($date->isToday()) {
+            if ($sessions->latestOpenBefore($date)) {
+                // Do not open/create today — caller should redirect to the open earlier day.
+                return null;
+            }
+
+            return $sessions->getOrCreateForDate($date, $user);
+        }
+
+        return $sessions->findForDate($date);
     }
 }

@@ -10,19 +10,56 @@
     $next = $date->copy()->addDay();
     $q = $entryDate ? ['date' => $entryDate] : [];
     $closed = $session?->isClosed() ?? false;
+    $blockNextDay = $session && $session->isOpen() && ! $isToday;
 @endphp
 
+<div x-data="{ closeFirstOpen: {{ ! empty($needClosePopup) ? 'true' : 'false' }} }"
+     @keydown.escape.window="closeFirstOpen = false">
 <div class="date-nav">
     <a class="nav-btn" href="{{ route('dashboard', ['date' => $prev->toDateString()]) }}" aria-label="Previous day"><i class="bi bi-chevron-left"></i></a>
-    <form method="GET" action="{{ route('dashboard') }}" class="date-pick m-0">
+    <form method="GET" action="{{ route('dashboard') }}" class="date-pick m-0"
+          @submit="if ({{ $blockNextDay ? 'true' : 'false' }} && ($refs.dayInput.value > '{{ $date->toDateString() }}')) { $event.preventDefault(); closeFirstOpen = true; $refs.dayInput.value = '{{ $date->toDateString() }}'; }">
         <i class="bi bi-calendar3 text-primary"></i>
         <span>{{ $isToday ? 'Today · ' : '' }}{{ $date->format('D, d M Y') }}</span>
-        <input type="date" name="date" value="{{ $date->toDateString() }}" max="{{ now()->toDateString() }}"
-               onchange="this.form.submit()" aria-label="Pick date">
+        <input type="date" name="date" x-ref="dayInput" value="{{ $date->toDateString() }}" max="{{ now()->toDateString() }}"
+               onchange="this.form.requestSubmit()" aria-label="Pick date">
     </form>
-    <a class="nav-btn {{ $isToday ? 'disabled' : '' }}" href="{{ $isToday ? '#' : route('dashboard', ['date' => $next->toDateString()]) }}" aria-label="Next day" @if ($isToday) aria-disabled="true" tabindex="-1" @endif>
-        <i class="bi bi-chevron-right"></i>
-    </a>
+    @if ($isToday)
+        <a class="nav-btn disabled" href="#" aria-label="Next day" aria-disabled="true" tabindex="-1">
+            <i class="bi bi-chevron-right"></i>
+        </a>
+    @elseif ($blockNextDay)
+        <button type="button" class="nav-btn" aria-label="Next day" @click="closeFirstOpen = true">
+            <i class="bi bi-chevron-right"></i>
+        </button>
+    @else
+        <a class="nav-btn" href="{{ route('dashboard', ['date' => $next->toDateString()]) }}" aria-label="Next day">
+            <i class="bi bi-chevron-right"></i>
+        </a>
+    @endif
+</div>
+
+{{-- Close current day before opening the next --}}
+<div x-cloak x-show="closeFirstOpen" class="sheet-backdrop" @click="closeFirstOpen = false"
+     x-transition.opacity.duration.150ms></div>
+<div x-cloak x-show="closeFirstOpen" class="sheet" role="dialog" aria-modal="true" aria-label="Close day first"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="translate-y-8 opacity-0"
+     x-transition:enter-end="translate-y-0 opacity-100"
+     @click.stop>
+    <div class="grabber" aria-hidden="true"></div>
+    <div class="text-center px-3 pb-1">
+        <div class="mx-auto mb-3" style="width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:#fff7ed;color:#ea580c;font-size:1.45rem">
+            <i class="bi bi-lock-fill"></i>
+        </div>
+        <h3 class="mb-2" style="text-align:center">Please close day first</h3>
+        <p class="text-muted mb-0" style="font-size:0.9rem;line-height:1.45;text-align:center">
+            Next day open karne se pehle <strong>{{ $date->format('d M Y') }}</strong> close karein.
+        </p>
+        <div class="mt-3 d-flex justify-content-center">
+            <button type="button" class="btn-xl btn-sm-x btn-blue" style="min-width:140px" @click="closeFirstOpen = false">OK</button>
+        </div>
+    </div>
 </div>
 
 @if ($closed)
@@ -182,4 +219,5 @@
         </div>
     @endif
 @endif
+</div>{{-- /close-first popup scope --}}
 @endsection

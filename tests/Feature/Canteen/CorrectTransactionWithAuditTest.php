@@ -2,10 +2,14 @@
 
 namespace Tests\Feature\Canteen;
 
+use App\Models\ActivityLog;
 use App\Models\AuditLog;
+use App\Models\DailySession;
 use App\Models\Vendor;
 use App\Models\VendorLedgerEntry;
+use App\Services\DailySessionService;
 use App\Services\VendorLedgerService;
+use Illuminate\Support\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -56,6 +60,89 @@ class CorrectTransactionWithAuditTest extends TestCase
         $this->assertSame('adjustment', VendorLedgerEntry::where('vendor_id', $vendor->id)->latest('id')->first()->entry_type);
         // adjustments never touch the drawer
         $this->assertMoney(0, $this->canteenCash());
+
+        $feed = ActivityLog::where('activity_type', 'vendor_balance_adjust')->sole();
+        $this->assertSame($vendor->id, $feed->vendor_id);
+        $this->assertStringContainsString('Biscuits', $feed->title);
+        $this->assertMoney('1200.50', $feed->amount);
+        $this->assertMoney('6200.50', $feed->secondary_amount);
+    }
+
+    public function test_adjust_balance_updates_purchase_activity_total_balance(): void
+    {
+        $vendor = $this->makeVendor('Alu Chat', 0);
+
+        $this->actingAs($this->admin)->post('/purchases', [
+            'vendor_id' => $vendor->id,
+            'entry_mode' => 'total',
+            'bill_amount' => '450',
+            'paid_amount' => '0',
+            'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
+        ])->assertRedirect();
+
+        $purchaseAct = ActivityLog::where('activity_type', 'purchase')->where('vendor_id', $vendor->id)->sole();
+        $this->assertSame('Rs. 450', $purchaseAct->meta['balance']);
+
+        $this->actingAs($this->admin)->post("/vendors/{$vendor->id}/adjust-balance", [
+            'new_balance' => '0',
+            'reason' => 'Bill was wrong',
+        ])->assertRedirect();
+
+        $purchaseAct->refresh();
+        $this->assertSame('Rs. 0', $purchaseAct->meta['balance']);
+        $this->assertSame(1, ActivityLog::where('activity_type', 'vendor_balance_adjust')->count());
+    }
+
+    public function test_adjust_balance_stays_on_previous_open_day_not_calendar_today(): void
+    {
+        $yesterday = now()->subDay()->startOfDay();
+        Carbon::setTestNow($yesterday->copy()->setTime(10, 0));
+
+        $vendor = $this->makeVendor('Alu Chat', 450);
+        $openDay = app(DailySessionService::class)->getOrCreateForDate($yesterday, $this->admin);
+        $this->assertSame($yesterday->toDateString(), $openDay->business_date->toDateString());
+
+        // Calendar rolls to "today" while yesterday is still open
+        Carbon::setTestNow(now()->addDay()->setTime(1, 12));
+
+        $this->actingAs($this->admin)->post("/vendors/{$vendor->id}/adjust-balance", [
+            'new_balance' => '440',
+            'reason' => 'adjust',
+        ])->assertRedirect();
+
+        $feed = ActivityLog::where('activity_type', 'vendor_balance_adjust')->sole();
+        $this->assertSame($openDay->id, $feed->daily_session_id);
+        $this->assertSame(
+            $yesterday->toDateString(),
+            DailySession::find($feed->daily_session_id)->business_date->toDateString(),
+        );
+
+        // Writes stay on yesterday; creating "today" is blocked while yesterday is open
+        $working = app(DailySessionService::class)->openSessionFor(null, $this->admin);
+        $this->assertSame($openDay->id, $working->id);
+
+        try {
+            app(DailySessionService::class)->getOrCreateForDate(now(), $this->admin);
+            $this->fail('Must not create today while yesterday is open.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('business_date', $e->errors());
+        }
+
+        // Home redirects to the still-open day with close-first prompt
+        $this->actingAs($this->admin)
+            ->get(route('dashboard'))
+            ->assertRedirect(route('dashboard', [
+                'date' => $yesterday->toDateString(),
+                'need_close' => 1,
+            ]));
+
+        $this->actingAs($this->admin)
+            ->get(route('dashboard', ['date' => $yesterday->toDateString(), 'need_close' => 1]))
+            ->assertOk()
+            ->assertSee('Please close day first', false)
+            ->assertDontSee('Close day', false);
+
+        Carbon::setTestNow();
     }
 
     public function test_adjustment_to_negative_balance_is_allowed(): void

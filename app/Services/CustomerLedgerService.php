@@ -255,6 +255,27 @@ class CustomerLedgerService
 
             $this->audit->log('customer.balance_adjusted', $locked, ['current_balance' => $old], ['current_balance' => $newBalance], $reason, $admin);
 
+            $session = $this->sessions->openSessionFor(null, $admin);
+            $this->activity->log(
+                $session,
+                'customer_balance_adjust',
+                'Balance adjust · '.$locked->name,
+                'Pehle '.Money::format($old).' → Ab '.Money::format($newBalance).' · '.$reason,
+                Money::abs($delta),
+                $newBalance,
+                ActivityColor::Blue,
+                null,
+                $entry,
+                false,
+                [
+                    'customer_id' => $locked->id,
+                    'old_balance' => Money::format($old),
+                    'new_balance' => Money::format($newBalance),
+                    'reason' => $reason,
+                ],
+                $admin,
+            );
+
             return $entry;
         });
     }

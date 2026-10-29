@@ -79,6 +79,7 @@ class Labels
             'rent_skip' => 'bi-skip-forward-fill',
             'day_closed' => 'bi-lock-fill',
             'day_reopened' => 'bi-unlock-fill',
+            'vendor_balance_adjust', 'customer_balance_adjust' => 'bi-sliders',
             default => 'bi-circle-fill',
         };
     }
