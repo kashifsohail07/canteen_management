@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Vendor Balances Report – Canteen Hisab</title>
+    <title>Vendor Balances Report – Canteen Ledger</title>
     <style>
         @page { margin: 24px 26px; }
         * { box-sizing: border-box; }
@@ -179,7 +179,7 @@
 </head>
 <body>
     <div class="header">
-        <div class="header-brand">Canteen Hisab</div>
+        <div class="header-brand">Canteen Ledger</div>
         <h1>Vendor Balances Report</h1>
         <div class="header-sub">{{ $scope_label ?? 'All active vendors' }}</div>
         <div class="header-meta">
@@ -264,7 +264,7 @@
     </div>
 
     <div class="foot">
-        Canteen Hisab · Vendor Balances Report · Confidential · Page generated automatically
+        Canteen Ledger · Vendor Balances Report · Confidential · Page generated automatically
     </div>
 </body>
 </html>

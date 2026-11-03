@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>@yield('title') – Canteen Hisab</title>
+    <title>@yield('title') – Canteen Ledger</title>
     <style>
         @page { margin: 28px 30px; }
         * { box-sizing: border-box; }
@@ -32,10 +32,10 @@
 </head>
 <body>
     <div class="head">
-        <h1>Canteen Hisab — @yield('title')</h1>
+        <h1>Canteen Ledger — @yield('title')</h1>
         <div class="sub">@yield('subtitle')</div>
     </div>
     @yield('body')
-    <div class="foot">Generated {{ now()->format('d M Y, h:i A') }} · Canteen Hisab</div>
+    <div class="foot">Generated {{ now()->format('d M Y, h:i A') }} · Canteen Ledger</div>
 </body>
 </html>

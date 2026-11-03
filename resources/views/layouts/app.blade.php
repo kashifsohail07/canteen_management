@@ -26,7 +26,7 @@
     <header class="topbar">
         <a class="brand" href="{{ route('dashboard') }}">
             <span class="brand-logo"><i class="bi bi-wallet2"></i></span>
-            <span>Canteen Hisab</span>
+            <span>Canteen Ledger</span>
         </a>
         <div class="topbar-actions">
             <button type="button" class="topbar-icon-btn" @click="refresh()" :disabled="pageBusy" aria-label="Refresh page" title="Refresh">

@@ -11,7 +11,7 @@
 
     <div class="login-card">
         <div class="login-logo"><i class="bi bi-wallet2"></i></div>
-        <h1 class="login-title">Canteen Hisab</h1>
+        <h1 class="login-title">Canteen Ledger</h1>
         <p class="login-sub">Cash, vendor aur rent ka poora hisab — ek jagah</p>
 
         @if ($errors->any())
@@ -54,7 +54,7 @@
         </form>
     </div>
 
-    <p class="text-center text-white-50 small mt-4 mb-0">© {{ date('Y') }} Canteen Hisab</p>
+    <p class="text-center text-white-50 small mt-4 mb-0">© {{ date('Y') }} Canteen Ledger</p>
 </div>
 </body>
 </html>

@@ -1,6 +1,6 @@
 {
-    "name": "Canteen Hisab",
-    "short_name": "Canteen Hisab",
+    "name": "Canteen Ledger",
+    "short_name": "Canteen Ledger",
     "description": "School canteen cash, vendors and rent hisab in your pocket.",
     "id": "/",
     "start_url": "/",

@@ -18,7 +18,7 @@ source "$LARAVEL_DIR/scripts/ensure-storage-links.sh"
 
 cd "$LARAVEL_DIR"
 
-echo "==> Deploying Canteen Hisab from $LARAVEL_DIR"
+echo "==> Deploying Canteen Ledger from $LARAVEL_DIR"
 echo "    Public HTML: $PUBLIC_HTML"
 echo ""
 

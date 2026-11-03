@@ -1,4 +1,4 @@
-/* Canteen Hisab – minimal service worker.
+/* Canteen Ledger – minimal service worker.
  * Caches the static app shell (built assets, icons, offline page) only.
  * Authenticated HTML pages and API responses are never cached, so money
  * data is always fresh and nothing private is stored on the device. */

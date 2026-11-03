@@ -46,7 +46,7 @@ read_env() {
 
 cd "$LARAVEL_DIR"
 
-APP_NAME="$(read_env APP_NAME 'Canteen Hisab')"
+APP_NAME="$(read_env APP_NAME 'Canteen Ledger')"
 APP_URL="$(read_env APP_URL '')"
 SITE_URL="${APP_URL:-https://your-domain.com}"
 SITE_URL="${SITE_URL%/}"

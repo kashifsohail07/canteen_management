@@ -15,7 +15,7 @@ class CreateAdminUser extends Command
                             {--password= : Plain password (min 8 chars)}
                             {--role=admin : Role: admin or super_user}';
 
-    protected $description = 'Create or update an admin / super user for Canteen Hisab';
+    protected $description = 'Create or update an admin / super user for Canteen Ledger';
 
     public function handle(): int
     {

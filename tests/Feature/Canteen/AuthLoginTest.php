@@ -19,7 +19,7 @@ class AuthLoginTest extends TestCase
 
     public function test_login_page_is_shown_to_guests(): void
     {
-        $this->get('/login')->assertOk()->assertSee('Canteen Hisab');
+        $this->get('/login')->assertOk()->assertSee('Canteen Ledger');
     }
 
     public function test_admin_can_login_with_default_credentials(): void

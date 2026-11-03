@@ -1,4 +1,4 @@
-# Canteen Hisab
+# Canteen Ledger
 
 A mobile-first **daily register for a school canteen in Pakistan**. Staff record sales, purchases (maal) and
 payments on a phone in a few taps; the owner/admin sees the real cash position, what is owed to each vendor,
