@@ -350,7 +350,8 @@ final class PurchaseActivityCard
 
         foreach ($purchases as $purchase) {
             $day = $purchase->recorded_at?->toDateString();
-            if ($day) {
+            // Average only over canteen working days (skip Sat/Sun).
+            if ($day && ! WorkingDays::isClosed($day)) {
                 $dayKeys[$day] = true;
             }
             foreach ($purchase->items as $item) {

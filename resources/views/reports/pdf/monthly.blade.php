@@ -7,9 +7,9 @@
 
 @section('body')
 <p>
-    <strong>Sale wale din:</strong> {{ $days_with_sales ?? 0 }}
-    · Recorded days: {{ $days_recorded ?? 0 }}
-    · Month days: {{ $month->daysInMonth }}
+    <strong>Sale days:</strong> {{ $days_with_sales ?? 0 }}
+    · Recorded: {{ $days_recorded ?? 0 }}
+    · Working days: {{ $working_days ?? $month->daysInMonth }}
     · Total sale: {{ Money::format($totals['sales']) }}
 </p>
 

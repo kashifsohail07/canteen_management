@@ -8,6 +8,7 @@ use App\Models\SchoolCalendar;
 use App\Models\Sale;
 use App\Services\DailySessionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\Concerns\SeedsCanteenBasics;
 use Tests\TestCase;
 
@@ -54,16 +55,30 @@ class SpecialWorkingDayTest extends TestCase
         $this->assertSame(DayType::Special, $session->day_type);
     }
 
-    public function test_sunday_is_a_weekend_day_by_default_but_still_accepts_entries(): void
+    public function test_saturday_and_sunday_are_weekend_days_by_default(): void
     {
-        $sunday = now()->startOfWeek()->subDay(); // the most recent past Sunday
-        $this->travelTo($sunday->setTime(11, 0));
+        $this->assertTrue(\App\Support\WorkingDays::isWeekend('2026-10-31')); // Saturday
+        $this->assertTrue(\App\Support\WorkingDays::isWeekend('2026-11-01')); // Sunday
+        $this->assertFalse(\App\Support\WorkingDays::isWeekend('2026-10-30')); // Friday
 
-        $this->actingAs($this->staff)->post('/sales', ['sale_segment_id' => $this->segment()->id, 'amount' => '100'])->assertRedirect();
+        $this->travelTo(Carbon::parse('2026-10-31 11:00:00'));
+        $satSession = app(DailySessionService::class)->getOrCreateForDate('2026-10-31', $this->staff);
+        $this->assertSame(DayType::Weekend, $satSession->day_type);
+    }
 
-        $session = DailySession::sole();
-        $this->assertSame(DayType::Weekend, $session->day_type);
-        $this->assertMoney(100, $this->canteenCash());
+    public function test_dashboard_skips_weekend_dates_to_previous_friday(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-30 10:00:00'));
+        $this->actingAs($this->staff)->post('/sales', [
+            'sale_segment_id' => $this->segment()->id,
+            'amount' => '100',
+            'business_date' => '2026-10-30',
+        ])->assertRedirect();
+
+        $this->travelTo(Carbon::parse('2026-11-01 11:00:00'));
+        $this->actingAs($this->staff)
+            ->get(route('dashboard', ['date' => '2026-11-01']))
+            ->assertRedirect(route('dashboard', ['date' => '2026-10-30']));
     }
 
     public function test_ptm_on_a_weekend_overrides_the_weekend_type(): void

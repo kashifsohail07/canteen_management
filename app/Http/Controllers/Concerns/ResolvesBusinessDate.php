@@ -5,33 +5,41 @@ namespace App\Http\Controllers\Concerns;
 use App\Models\DailySession;
 use App\Models\User;
 use App\Services\DailySessionService;
+use App\Support\WorkingDays;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Throwable;
 
 trait ResolvesBusinessDate
 {
-    /** Business date from ?date= (or business_date); invalid input falls back to today, future dates are clamped. */
+    /**
+     * Business date from ?date= (or business_date); invalid input falls back to today,
+     * future dates are clamped, Sat/Sun snap to the previous working day.
+     */
     protected function requestedDate(Request $request): Carbon
     {
         $today = now()->startOfDay();
         $raw = $request->query('date') ?? $request->input('business_date');
 
         if (! is_string($raw) || $raw === '') {
-            return $today;
+            return WorkingDays::onOrBefore($today);
         }
 
         try {
             $date = Carbon::createFromFormat('Y-m-d', $raw)->startOfDay();
         } catch (Throwable) {
-            return $today;
+            return WorkingDays::onOrBefore($today);
         }
 
         if ($date->format('Y-m-d') !== $raw) {
-            return $today;
+            return WorkingDays::onOrBefore($today);
         }
 
-        return $date->gt($today) ? $today : $date;
+        if ($date->gt($today)) {
+            $date = $today;
+        }
+
+        return WorkingDays::onOrBefore($date);
     }
 
     /** Back-dated entry date for quick-entry pages: Y-m-d for past days, null for today. */

@@ -6,8 +6,9 @@
 
 @section('content')
 @php
-    $prev = $date->copy()->subDay();
-    $next = $date->copy()->addDay();
+    $prev = \App\Support\WorkingDays::previous($date);
+    $next = \App\Support\WorkingDays::next($date);
+    $canNext = $next->lte(now()->startOfDay());
     $q = $entryDate ? ['date' => $entryDate] : [];
     $closed = $session?->isClosed() ?? false;
     $blockNextDay = $session && $session->isOpen() && ! $isToday;
@@ -24,7 +25,7 @@
         <input type="date" name="date" x-ref="dayInput" value="{{ $date->toDateString() }}" max="{{ now()->toDateString() }}"
                onchange="this.form.requestSubmit()" aria-label="Pick date">
     </form>
-    @if ($isToday)
+    @if (! $canNext)
         <a class="nav-btn disabled" href="#" aria-label="Next day" aria-disabled="true" tabindex="-1">
             <i class="bi bi-chevron-right"></i>
         </a>

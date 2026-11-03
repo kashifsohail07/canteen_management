@@ -41,7 +41,7 @@
     <div class="stat tone-indigo">
         <div class="stat-label">Sale Wale Din</div>
         <div class="stat-value">{{ $days_with_sales ?? 0 }}</div>
-        <div class="stat-sub">{{ $days_recorded ?? 0 }} din record · {{ $month->daysInMonth }} din mahina</div>
+        <div class="stat-sub">{{ $days_recorded ?? 0 }} recorded · {{ $working_days ?? $month->daysInMonth }} working days</div>
     </div>
     <div class="stat tone-green"><div class="stat-label">Total Sale</div><div class="stat-value">{{ Money::format($totals['sales']) }}</div></div>
     <div class="stat tone-orange"><div class="stat-label">Total Maal (Bills)</div><div class="stat-value">{{ Money::format($totals['bills']) }}</div></div>

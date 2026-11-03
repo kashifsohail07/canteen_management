@@ -57,6 +57,7 @@ trait SeedsCanteenBasics
         $settings->set('monthly_rent_target', '71000');
         $settings->set('daily_rent_suggest', '5000');
         $settings->set('currency', 'PKR');
+        $settings->set('weekend_days', '6,7'); // Sat + Sun — canteen closed
 
         ExpenseCategory::firstOrCreate(['name' => 'Misc'], ['is_active' => true]);
 

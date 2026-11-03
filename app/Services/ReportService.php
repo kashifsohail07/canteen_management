@@ -326,12 +326,26 @@ class ReportService
                 'closing_cash' => $s->actual_counted_cash ?? $s->expected_closing_cash,
                 'difference' => $s->cash_difference,
             ];
-        });
+        })->filter(function (array $row) {
+            // Canteen closed Sat/Sun — hide from monthly calendar unless there is real activity.
+            if (! \App\Support\WorkingDays::isClosed($row['date'])) {
+                return true;
+            }
+
+            return Money::isPositive($row['sales'])
+                || Money::isPositive($row['bills'])
+                || Money::isPositive($row['vendor_payments'])
+                || Money::isPositive($row['expenses'])
+                || Money::isPositive($row['rent_reserved'])
+                || Money::isPositive($row['rent_paid']);
+        })->values();
 
         $total = fn (string $key) => $rows->reduce(fn ($carry, $row) => Money::add($carry, $row[$key]), Money::zero());
 
-        $daysWithSales = $rows->filter(fn (array $row) => Money::isPositive($row['sales']))->count();
-        $daysRecorded = $rows->count();
+        $daysWithSales = $rows->filter(
+            fn (array $row) => Money::isPositive($row['sales']) && ! \App\Support\WorkingDays::isClosed($row['date'])
+        )->count();
+        $daysRecorded = $rows->filter(fn (array $row) => ! \App\Support\WorkingDays::isClosed($row['date']))->count();
 
         // sales per segment (exclude Rent Side — that is not bikri)
         $segmentNames = SaleSegment::pluck('name', 'id');
@@ -361,6 +375,7 @@ class ReportService
             'rows' => $rows,
             'days_with_sales' => $daysWithSales,
             'days_recorded' => $daysRecorded,
+            'working_days' => \App\Support\WorkingDays::countInMonth($year, $month),
             'totals' => [
                 'sales' => $total('sales'),
                 'bills' => $total('bills'),

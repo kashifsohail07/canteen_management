@@ -190,9 +190,8 @@ class DailySessionService
             return DayType::from($calendar->day_type);
         }
 
-        // ISO weekday numbers (1=Mon ... 7=Sun) configured as comma list; default Sunday only
-        $weekend = array_filter(array_map('intval', explode(',', $this->settings->get('weekend_days', '7') ?? '7')));
-        if (in_array($date->dayOfWeekIso, $weekend, true)) {
+        // ISO weekday numbers (1=Mon ... 7=Sun); default Sat+Sun — canteen closed.
+        if (\App\Support\WorkingDays::isWeekend($date, $this->settings)) {
             return DayType::Weekend;
         }
 

@@ -87,6 +87,7 @@ class DashboardService
 
     /**
      * Month-to-date sales (excl. Rent Side): total, days with sales, average per selling day.
+     * Saturday/Sunday (canteen closed) are never counted in the average.
      *
      * @return array{total: string, average: string, days_with_sales: int}
      */
@@ -95,8 +96,21 @@ class DashboardService
         $start = sprintf('%04d-%02d-01', $year, $month);
         $end = date('Y-m-t', strtotime($start));
 
-        $sessionIds = DailySession::whereBetween('business_date', [$start, $end])->pluck('id');
-        if ($sessionIds->isEmpty()) {
+        $sessions = DailySession::whereBetween('business_date', [$start, $end])
+            ->get(['id', 'business_date']);
+        if ($sessions->isEmpty()) {
+            return [
+                'total' => Money::zero(),
+                'average' => Money::zero(),
+                'days_with_sales' => 0,
+            ];
+        }
+
+        $workingSessionIds = $sessions
+            ->filter(fn (DailySession $s) => ! \App\Support\WorkingDays::isClosed($s->business_date))
+            ->pluck('id');
+
+        if ($workingSessionIds->isEmpty()) {
             return [
                 'total' => Money::zero(),
                 'average' => Money::zero(),
@@ -105,7 +119,7 @@ class DashboardService
         }
 
         $perDay = Sale::query()
-            ->whereIn('daily_session_id', $sessionIds)
+            ->whereIn('daily_session_id', $workingSessionIds)
             ->where('is_reversed', false)
             ->where('payment_method', '!=', 'rent_side')
             ->selectRaw('daily_session_id, SUM(amount) as total')

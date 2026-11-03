@@ -37,6 +37,15 @@ class DashboardController extends Controller
 
         $date = $this->requestedDate($request);
 
+        // Clean URL if user picked Sat/Sun (snapped to previous working day).
+        $rawDate = $request->query('date');
+        if (is_string($rawDate) && $rawDate !== '' && $rawDate !== $date->toDateString()) {
+            return redirect()->route('dashboard', array_filter([
+                'date' => $date->isToday() ? null : $date->toDateString(),
+                'need_close' => $request->query('need_close'),
+            ]));
+        }
+
         // Home / "today" (or any later day) while a previous day is still open →
         // send them back to that working day with a close-first prompt.
         if ($date->isToday()) {
