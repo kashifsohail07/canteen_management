@@ -13,7 +13,7 @@
         'customer_udhaar', 'customer_payment' => 'Balance',
         'vendor_balance_adjust', 'customer_balance_adjust' => 'Ab',
         'owner_deposit', 'owner_repayment' => 'Owner bal.',
-        'rent_reserve' => 'Reserve',
+        'rent_reserve' => 'This month',
         'rent_payment' => 'Baqi',
         'day_closed' => 'Farq',
         default => null,
@@ -30,7 +30,9 @@
     }
 
     $isPurchase = $a->activity_type === 'purchase';
-    $purchaseCard = $isPurchase ? \App\Support\PurchaseActivityCard::for($a) : null;
+    $purchaseCard = $isPurchase
+        ? ($a->getAttribute('purchase_card') ?? \App\Support\PurchaseActivityCard::for($a))
+        : null;
     $qtyLabel = $purchaseCard['qty_label'] ?? null;
     [$pillLabel, $pillColor] = \App\Support\Labels::activityPill($a->activity_type);
     $amountLabel = \App\Support\Labels::activityAmountLabel($a->activity_type);
@@ -45,8 +47,21 @@
     $balanceLabel = null;
     $balanceValue = null;
     if ($purchaseCard && ! empty($purchaseCard['balance'])) {
-        $balanceLabel = 'Total Balance';
+        $balanceLabel = 'Remaining';
         $balanceValue = $purchaseCard['balance'];
+    } elseif ($a->activity_type === 'rent_reserve') {
+        // Show this calendar month's set-aside total (not the live multi-month reserve bucket).
+        static $monthSaved = [];
+        $refDate = $a->recorded_at ?? now();
+        $cacheKey = $refDate->format('Y-m');
+        if (! array_key_exists($cacheKey, $monthSaved)) {
+            $monthSaved[$cacheKey] = \App\Models\RentObligation::query()
+                ->where('year', (int) $refDate->format('Y'))
+                ->where('month', (int) $refDate->format('n'))
+                ->value('reserved_total');
+        }
+        $balanceLabel = 'This month';
+        $balanceValue = \App\Support\Money::format($monthSaved[$cacheKey] ?? 0);
     } elseif ($a->secondary_amount !== null && $secondaryLabel) {
         $balanceLabel = $secondaryLabel === 'Balance' ? 'Total Balance' : $secondaryLabel;
         $balanceValue = \App\Support\Money::format($a->secondary_amount);
@@ -63,7 +78,6 @@
         'orange' => ['fg' => 'var(--balance-orange)', 'bg' => 'var(--balance-orange-soft)'],
         default => ['fg' => 'var(--brand-blue)', 'bg' => 'var(--brand-blue-soft)'],
     };
-    // Purchases keep the orange basket look from the mockup.
     if ($isPurchase) {
         $tone = ['fg' => 'var(--balance-orange)', 'bg' => 'var(--balance-orange-soft)'];
     }
@@ -96,26 +110,39 @@
         <span class="badge-soft {{ $pillColor }} pc-pill">{{ $pillLabel }}</span>
     </div>
 
-    @if ($amountText !== null)
-        <div class="pc-stats {{ $qtyLabel ? '' : 'pc-stats-total-only' }}">
+    @if ($isPurchase && $purchaseCard)
+        <div class="pc-lines">
             @if ($qtyLabel)
-                <div class="pc-stat">
-                    <span class="pc-stat-label">Qty</span>
-                    <span class="pc-stat-value">{{ $qtyLabel }}</span>
+                <div class="pc-line">
+                    <span>Qty</span>
+                    <strong>{{ $qtyLabel }}</strong>
                 </div>
-                <span class="pc-stats-divider" aria-hidden="true"></span>
             @endif
+            <div class="pc-line">
+                <span>Order</span>
+                <strong class="text-owed">{{ $purchaseCard['bill'] }}</strong>
+            </div>
+            <div class="pc-line">
+                <span>Payment</span>
+                <strong class="text-pay">{{ $purchaseCard['paid'] }}</strong>
+            </div>
+        </div>
+        <div class="pc-balance">
+            <span>Remaining</span>
+            <strong>{{ $purchaseCard['balance'] }}</strong>
+        </div>
+    @elseif ($amountText !== null)
+        <div class="pc-stats pc-stats-total-only">
             <div class="pc-stat">
                 <span class="pc-stat-label">{{ $amountLabel }}</span>
                 <span class="pc-stat-value pc-stat-total" style="color: {{ $tone['fg'] }}">{{ $amountText }}</span>
             </div>
         </div>
-    @endif
-
-    @if ($balanceValue)
-        <div class="pc-balance">
-            <span>{{ $balanceLabel }}</span>
-            <strong>{{ $balanceValue }}</strong>
-        </div>
+        @if ($balanceValue)
+            <div class="pc-balance">
+                <span>{{ $balanceLabel }}</span>
+                <strong>{{ $balanceValue }}</strong>
+            </div>
+        @endif
     @endif
 </{{ $tag }}>

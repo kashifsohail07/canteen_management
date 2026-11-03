@@ -45,7 +45,10 @@
         <span>Diya: <b class="text-dark">{{ Money::format($obligation->paid_total) }}</b></span>
         <span>Baqi: <b class="text-dark">{{ Money::format($obligation->remainingToPay()) }}</b></span>
     </div>
-    <a href="{{ route('rent.pay', $entryDate ? ['date' => $entryDate] : []) }}" class="btn-xl btn-sm-x btn-ghost w-100 mt-3"><i class="bi bi-house-check-fill"></i> Rent Pay Karein (Malik Ko)</a>
+    <div class="d-flex gap-2 mt-3">
+        <a href="{{ route('reports.rent-side') }}" class="btn-xl btn-sm-x btn-outline-x flex-fill"><i class="bi bi-calendar3"></i> Monthly History</a>
+        <a href="{{ route('rent.pay', $entryDate ? ['date' => $entryDate] : []) }}" class="btn-xl btn-sm-x btn-ghost flex-fill"><i class="bi bi-house-check-fill"></i> Rent Pay</a>
+    </div>
 </div>
 
 <form method="POST" action="{{ route('rent.reserve') }}" id="reserve-form"

@@ -97,6 +97,7 @@
         <a class="sheet-link" href="{{ route('vendors.index') }}"><i class="bi bi-people-fill"></i>Vendors</a>
         <a class="sheet-link" href="{{ route('customers.index') }}"><i class="bi bi-person-badge"></i>Customers</a>
         <a class="sheet-link" href="{{ route('owner.index') }}"><i class="bi bi-person-badge-fill"></i>Owner / Pocket</a>
+        <a class="sheet-link" href="{{ route('reports.rent-side') }}"><i class="bi bi-calendar3"></i>Rent Side History</a>
         <a class="sheet-link" href="{{ route('rent.pay') }}"><i class="bi bi-house-lock-fill"></i>Rent Pay</a>
         <a class="sheet-link" href="{{ route('closing.show') }}"><i class="bi bi-lock-fill"></i>Din Close</a>
         <a class="sheet-link" href="{{ route('reports.index') }}"><i class="bi bi-file-earmark-bar-graph-fill"></i>Reports</a>

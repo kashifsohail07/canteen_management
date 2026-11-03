@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RentObligation extends Model
 {
-    protected $fillable = ['year', 'month', 'target_amount', 'reserved_total', 'paid_total'];
+    protected $fillable = ['year', 'month', 'target_amount', 'reserved_total', 'paid_total', 'closed_at'];
 
     protected function casts(): array
     {
@@ -18,6 +18,7 @@ class RentObligation extends Model
             'target_amount' => 'decimal:2',
             'reserved_total' => 'decimal:2',
             'paid_total' => 'decimal:2',
+            'closed_at' => 'datetime',
         ];
     }
 
@@ -29,6 +30,17 @@ class RentObligation extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(RentPayment::class);
+    }
+
+    public function isClosed(): bool
+    {
+        return $this->closed_at !== null;
+    }
+
+    /** Human label, e.g. "October 2026". */
+    public function periodLabel(): string
+    {
+        return now()->setDate($this->year, $this->month, 1)->format('F Y');
     }
 
     /** Amount of the monthly target still unpaid. */

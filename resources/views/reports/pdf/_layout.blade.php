@@ -19,6 +19,14 @@
         .in { color: #057a55; } .out { color: #e02424; } .owed { color: #d97706; }
         .kv td:first-child { color: #6b7280; width: 60%; }
         .kv td:last-child { text-align: right; font-weight: bold; }
+        .summary-card { width: 100%; border-collapse: separate; border-spacing: 8px 0; margin: 0 0 14px; }
+        .summary-card td { width: 33.33%; vertical-align: top; border: 0; padding: 0; background: transparent; }
+        .summary-pill { background: #e8f0fe; border: 1px solid #c7d9f8; border-radius: 8px; padding: 10px 12px; text-align: center; }
+        .summary-pill .lbl { display: block; font-size: 8px; text-transform: uppercase; letter-spacing: .4px; color: #1e429f; font-weight: bold; margin-bottom: 4px; }
+        .summary-pill .val { display: block; font-size: 13px; font-weight: bold; color: #111827; }
+        .summary-pill .val.in { color: #057a55; }
+        .summary-pill .val.out { color: #e02424; }
+        .summary-pill .val.cash { color: #1a56db; }
         .foot { margin-top: 18px; font-size: 8px; color: #9ca3af; text-align: center; }
     </style>
 </head>

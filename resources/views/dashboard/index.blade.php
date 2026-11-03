@@ -159,10 +159,10 @@
             <strong data-customers>{{ Money::format($summary['customers_owed'] ?? 0) }}</strong>
             <small>{{ $customerCount }} {{ $customerCount === 1 ? 'customer' : 'customers' }}</small>
         </a>
-        <a class="dash-mini dm-rent" href="{{ route('rent.create', $q) }}">
-            <span class="dash-kicker">Rent side</span>
-            <strong data-rent>{{ Money::format($summary['rent_reserve']) }}</strong>
-            <small>Paid {{ Money::format($summary['rent']['paid_total']) }} / {{ Money::format($summary['rent']['target']) }}</small>
+        <a class="dash-mini dm-rent" href="{{ route('reports.rent-side') }}">
+            <span class="dash-kicker">Rent side · {{ $summary['month_label'] }}</span>
+            <strong data-rent>{{ Money::format($summary['rent']['reserved_total']) }}</strong>
+            <small>Last month {{ Money::format($summary['rent']['previous_reserved']) }}</small>
         </a>
     </div>
 

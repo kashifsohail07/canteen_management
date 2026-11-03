@@ -28,13 +28,19 @@
     </div>
 @endunless
 
-@if (Money::isPositive($sales_total))
+@if (Money::isPositive($sales_total) || Money::isPositive($rent_side_total))
     <div class="card-x">
         <div class="card-title">Aaj ki sale</div>
-        <div class="kv total"><span>Total sale</span><span class="text-in">{{ Money::format($sales_total) }}</span></div>
         @foreach ($segments as $seg)
             <div class="kv"><span>{{ $seg['name'] }} <small class="text-muted">· {{ $seg['count'] }}</small></span><span>{{ Money::format($seg['total']) }}</span></div>
         @endforeach
+        <div class="kv total"><span>Total sale</span><span class="text-in">{{ Money::format($sales_total) }}</span></div>
+        @if (Money::isPositive($rent_side_total))
+            <div class="kv">
+                <span>Rent Side <small class="text-muted">· sale se minus · {{ $rent_side_count }}</small></span>
+                <span class="text-pay">-{{ Money::format($rent_side_total) }}</span>
+            </div>
+        @endif
     </div>
 @endif
 

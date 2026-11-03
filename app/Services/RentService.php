@@ -30,11 +30,14 @@ class RentService
         $find = fn () => RentObligation::where('year', $year)->where('month', $month)->first();
 
         if ($existing = $find()) {
+            // Opening / touching a month closes every earlier open period.
+            $this->closeEarlierMonths($year, $month);
+
             return $existing;
         }
 
         try {
-            return RentObligation::create([
+            $obligation = RentObligation::create([
                 'year' => $year,
                 'month' => $month,
                 'target_amount' => $this->settings->getDecimal('monthly_rent_target', 71000),
@@ -42,8 +45,29 @@ class RentService
                 'paid_total' => Money::zero(),
             ]);
         } catch (UniqueConstraintViolationException) {
-            return $find();
+            $obligation = $find();
         }
+
+        $this->closeEarlierMonths($year, $month);
+
+        return $obligation;
+    }
+
+    /**
+     * Soft-close every open rent period strictly before ($year, $month).
+     * Cash in rent_reserve is unchanged — only the monthly tally is locked for history.
+     */
+    public function closeEarlierMonths(int $year, int $month): int
+    {
+        return RentObligation::query()
+            ->whereNull('closed_at')
+            ->where(function ($q) use ($year, $month) {
+                $q->where('year', '<', $year)
+                    ->orWhere(function ($q2) use ($year, $month) {
+                        $q2->where('year', $year)->where('month', '<', $month);
+                    });
+            })
+            ->update(['closed_at' => now()]);
     }
 
     /**
@@ -83,11 +107,12 @@ class RentService
             $reserve = $this->cash->credit(CashAccountCode::RentReserve, $amount, 'rent_reserve_transfer', $ctx);
 
             $obligation->update(['reserved_total' => Money::add($obligation->reserved_total, $amount)]);
+            $monthTotal = Money::of($obligation->reserved_total);
 
             $this->activity->log(
                 $session, 'rent_reserve', 'Rent set aside',
-                'Reserve now '.Money::format($reserve->balance_after).' · Month target '.Money::format($obligation->target_amount),
-                $amount, $reserve->balance_after, ActivityColor::Blue, null, $reservation, false, null, $user, $now,
+                'This month '.Money::format($monthTotal),
+                $amount, $monthTotal, ActivityColor::Blue, null, $reservation, false, null, $user, $now,
             );
 
             return $reservation->refresh();

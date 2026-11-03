@@ -83,4 +83,11 @@
         <button type="submit" name="format" value="pdf" class="btn-xl btn-sm-x btn-ghost flex-fill"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
     </div>
 </form>
+
+{{-- rent side history --}}
+<div class="card-x">
+    <div class="card-title"><i class="bi bi-house-lock-fill"></i> Rent Side History</div>
+    <div class="field-hint mb-2">Per-month set-aside totals, overall average, open vs closed.</div>
+    <a href="{{ route('reports.rent-side') }}" class="btn-xl btn-sm-x btn-blue w-100"><i class="bi bi-eye"></i> View</a>
+</div>
 @endsection

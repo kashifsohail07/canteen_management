@@ -99,6 +99,12 @@ class ReportController extends Controller
         };
     }
 
+    /** Rent Side set-aside history: per-month totals + average. */
+    public function rentSide(Request $request): View
+    {
+        return view('reports.rent-side', $this->reports->rentSideHistory());
+    }
+
     /** Vendor balances snapshot PDF. Optional vendors[] filter. */
     public function vendors(Request $request): Response
     {

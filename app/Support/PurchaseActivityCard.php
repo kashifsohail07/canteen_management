@@ -5,6 +5,8 @@ namespace App\Support;
 use App\Models\ActivityLog;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
+use App\Models\VendorPayment;
+use Illuminate\Support\Collection;
 
 /**
  * Display payload for purchase rows in the activity feed.
@@ -18,8 +20,9 @@ final class PurchaseActivityCard
      *   bill: string,
      *   previous: string,
      *   balance: string,
-     *   paid: ?string,
-     *   on_credit: ?string
+     *   paid: string,
+     *   on_credit: ?string,
+     *   folded_payment_ids: list<int>
      * }|null
      */
     public static function for(ActivityLog $activity, ?Purchase $purchase = null): ?array
@@ -28,47 +31,155 @@ final class PurchaseActivityCard
             return null;
         }
 
+        $purchase ??= self::resolvePurchase($activity);
         $meta = is_array($activity->meta) ? $activity->meta : [];
+
+        if ($purchase) {
+            [$paid, $balance, $foldedIds] = self::foldedPaymentTotals($purchase);
+
+            return [
+                'qty_label' => self::qtyLabel($purchase) ?? ($meta['qty_label'] ?? null),
+                'bill' => Money::format($purchase->bill_amount),
+                'previous' => Money::format($purchase->previous_balance),
+                'balance' => Money::format($balance),
+                'paid' => Money::format($paid),
+                'on_credit' => Money::isPositive(Money::sub($purchase->bill_amount, $paid))
+                    ? Money::format(Money::sub($purchase->bill_amount, $paid))
+                    : null,
+                'folded_payment_ids' => $foldedIds,
+            ];
+        }
+
         if (($meta['layout'] ?? null) === 'purchase_v2' && isset($meta['bill'], $meta['previous'], $meta['balance'])) {
+            $paidLabel = isset($meta['paid'])
+                ? (string) preg_replace('/\s*\(.*\)$/', '', (string) $meta['paid'])
+                : Money::format(0);
+
             return [
                 'qty_label' => $meta['qty_label'] ?? null,
                 'bill' => (string) $meta['bill'],
                 'previous' => (string) $meta['previous'],
                 'balance' => (string) $meta['balance'],
-                'paid' => isset($meta['paid']) ? (string) $meta['paid'] : null,
+                'paid' => $paidLabel !== '' ? $paidLabel : Money::format(0),
                 'on_credit' => isset($meta['on_credit']) ? (string) $meta['on_credit'] : null,
+                'folded_payment_ids' => [],
             ];
         }
 
-        $purchase ??= self::resolvePurchase($activity);
-        if (! $purchase) {
-            return null;
-        }
+        return null;
+    }
 
-        $bill = Money::of($purchase->bill_amount);
+    /**
+     * Paid on the bill + later same-day standalone payments (until next purchase).
+     *
+     * @return array{0: string, 1: string, 2: list<int>} [paid_total, balance_after, folded_payment_ids]
+     */
+    public static function foldedPaymentTotals(Purchase $purchase): array
+    {
         $paid = Money::of($purchase->paid_amount);
-        $unpaid = Money::sub($bill, $paid);
-        $previous = Money::of($purchase->previous_balance);
         $balance = Money::of($purchase->new_balance);
+        $foldedIds = [];
 
-        $card = [
-            'qty_label' => self::qtyLabel($purchase),
-            'bill' => Money::format($bill),
-            'previous' => Money::format($previous),
-            'balance' => Money::format($balance),
-            'paid' => null,
-            'on_credit' => null,
-        ];
-
-        if (Money::isPositive($paid)) {
-            $pocket = $purchase->payment_source === 'personal_pocket' ? ' (personal pocket)' : '';
-            $card['paid'] = Money::format($paid).$pocket;
+        // On-bill payments (already counted in paid_amount) — still hide their feed rows if any.
+        $linkedIds = VendorPayment::query()
+            ->where('purchase_id', $purchase->id)
+            ->where('is_reversed', false)
+            ->pluck('id')
+            ->all();
+        foreach ($linkedIds as $id) {
+            $foldedIds[] = (int) $id;
         }
-        if (Money::isPositive($unpaid)) {
-            $card['on_credit'] = Money::format($unpaid);
+        if ($linkedIds !== []) {
+            $lastLinked = VendorPayment::query()
+                ->whereIn('id', $linkedIds)
+                ->orderByDesc('recorded_at')
+                ->orderByDesc('id')
+                ->first();
+            if ($lastLinked) {
+                $balance = Money::of($lastLinked->new_balance);
+            }
         }
 
-        return $card;
+        $next = Purchase::query()
+            ->where('vendor_id', $purchase->vendor_id)
+            ->where('daily_session_id', $purchase->daily_session_id)
+            ->where('is_reversed', false)
+            ->where(function ($q) use ($purchase) {
+                $q->where('recorded_at', '>', $purchase->recorded_at)
+                    ->orWhere(function ($q2) use ($purchase) {
+                        $q2->where('recorded_at', '=', $purchase->recorded_at)
+                            ->where('id', '>', $purchase->id);
+                    });
+            })
+            ->orderBy('recorded_at')
+            ->orderBy('id')
+            ->first(['id', 'recorded_at']);
+
+        $standalone = VendorPayment::query()
+            ->where('vendor_id', $purchase->vendor_id)
+            ->where('daily_session_id', $purchase->daily_session_id)
+            ->whereNull('purchase_id')
+            ->where('is_reversed', false)
+            ->where(function ($q) use ($purchase) {
+                $q->where('recorded_at', '>', $purchase->recorded_at)
+                    ->orWhere(function ($q2) use ($purchase) {
+                        $q2->where('recorded_at', '=', $purchase->recorded_at)
+                            ->where('id', '>', $purchase->id);
+                    });
+            });
+
+        if ($next) {
+            $standalone->where(function ($q) use ($next) {
+                $q->where('recorded_at', '<', $next->recorded_at)
+                    ->orWhere(function ($q2) use ($next) {
+                        $q2->where('recorded_at', '=', $next->recorded_at)
+                            ->where('id', '<', $next->id);
+                    });
+            });
+        }
+
+        foreach ($standalone->orderBy('recorded_at')->orderBy('id')->get() as $payment) {
+            $paid = Money::add($paid, $payment->amount);
+            $balance = Money::of($payment->new_balance);
+            $foldedIds[] = (int) $payment->id;
+        }
+
+        return [$paid, $balance, array_values(array_unique($foldedIds))];
+    }
+
+    /**
+     * Drop vendor_payment feed rows that are already shown on a purchase card.
+     *
+     * @param  Collection<int, ActivityLog>  $activities
+     * @return Collection<int, ActivityLog>
+     */
+    public static function withoutFoldedPayments(Collection $activities): Collection
+    {
+        self::eagerLoadPurchases($activities);
+
+        $foldedPaymentIds = [];
+        foreach ($activities as $activity) {
+            if (! $activity instanceof ActivityLog || $activity->activity_type !== 'purchase') {
+                continue;
+            }
+            $card = self::for($activity);
+            if ($card) {
+                $activity->setAttribute('purchase_card', $card);
+                foreach ($card['folded_payment_ids'] as $id) {
+                    $foldedPaymentIds[$id] = true;
+                }
+            }
+        }
+
+        if ($foldedPaymentIds === []) {
+            return $activities->values();
+        }
+
+        return $activities
+            ->reject(fn (ActivityLog $a) => $a->activity_type === 'vendor_payment'
+                && $a->reference_type === 'vendor_payment'
+                && isset($foldedPaymentIds[(int) $a->reference_id]))
+            ->values();
     }
 
     public static function resolvePurchase(ActivityLog $activity): ?Purchase
@@ -128,7 +239,7 @@ final class PurchaseActivityCard
         if ($units->count() === 1) {
             $total = '0';
             foreach ($items as $item) {
-                $total = bcadd($total, (string) $item->quantity, 3);
+                $total = \bcadd($total, (string) $item->quantity, 3);
             }
 
             return self::trimQty($total).' '.$units->first();
@@ -161,7 +272,7 @@ final class PurchaseActivityCard
                 if (! isset($bags[$key])) {
                     $bags[$key] = ['name' => $name, 'unit' => $unit, 'qty' => '0'];
                 }
-                $bags[$key]['qty'] = bcadd($bags[$key]['qty'], (string) $item->quantity, 3);
+                $bags[$key]['qty'] = \bcadd($bags[$key]['qty'], (string) $item->quantity, 3);
             }
         }
 
@@ -203,7 +314,7 @@ final class PurchaseActivityCard
             $items = $purchase->relationLoaded('items') ? $purchase->items : $purchase->items()->get();
             foreach ($items as $item) {
                 $hasItems = true;
-                $total = bcadd($total, (string) $item->quantity, 3);
+                $total = \bcadd($total, (string) $item->quantity, 3);
             }
         }
 
@@ -244,14 +355,14 @@ final class PurchaseActivityCard
             }
             foreach ($purchase->items as $item) {
                 $qty = (string) $item->quantity;
-                $rawOverall = bcadd($rawOverall, $qty, 3);
+                $rawOverall = \bcadd($rawOverall, $qty, 3);
                 if ($day === $todayKey) {
-                    $rawToday = bcadd($rawToday, $qty, 3);
+                    $rawToday = \bcadd($rawToday, $qty, 3);
                 }
             }
         }
 
-        if (bccomp($rawOverall, '0', 3) <= 0) {
+        if (\bccomp($rawOverall, '0', 3) <= 0) {
             return null;
         }
 
@@ -260,7 +371,7 @@ final class PurchaseActivityCard
         return [
             'today' => self::trimQty($rawToday),
             'overall' => self::trimQty($rawOverall),
-            'average' => $days > 0 ? self::trimQty(bcdiv($rawOverall, (string) $days, 3)) : '0',
+            'average' => $days > 0 ? self::trimQty(\bcdiv($rawOverall, (string) $days, 3)) : '0',
             'days' => $days,
             'orders' => $purchases->count(),
         ];

@@ -36,6 +36,11 @@ class DashboardService
         $obligation = RentObligation::where('year', $date->year)->where('month', $date->month)->first()
             ?? $this->rent->ensureObligation($date->year, $date->month);
 
+        $prevMonth = $date->copy()->startOfMonth()->subMonth();
+        $previousObligation = RentObligation::where('year', $prevMonth->year)
+            ->where('month', $prevMonth->month)
+            ->first();
+
         $vendorsOwed = Money::zero();
         Vendor::where('is_active', true)->where('current_balance', '>', 0)->get(['current_balance'])
             ->each(function ($v) use (&$vendorsOwed) {
@@ -74,6 +79,8 @@ class DashboardService
                 'reserved_total' => Money::of($obligation->reserved_total),
                 'paid_total' => Money::of($obligation->paid_total),
                 'remaining' => $obligation->remainingToPay(),
+                'previous_label' => $prevMonth->format('M Y'),
+                'previous_reserved' => Money::of($previousObligation?->reserved_total ?? 0),
             ],
         ];
     }
@@ -148,7 +155,9 @@ class DashboardService
             ->orderByDesc('id')
             ->paginate($perPage);
 
-        \App\Support\PurchaseActivityCard::eagerLoadPurchases($page->getCollection());
+        $page->setCollection(
+            \App\Support\PurchaseActivityCard::withoutFoldedPayments($page->getCollection())
+        );
 
         return $page;
     }
@@ -156,7 +165,7 @@ class DashboardService
     /**
      * Sale totals per segment for the session (all active segments, zero included).
      *
-     * @return Collection<int, array{segment_id: int, name: string, slug: string, total: string, count: int}>
+     * @return Collection<int, array{segment_id: int, name: string, slug: string, total: string, count: int, is_rent_side: bool}>
      */
     public function segmentTotals(DailySession $session): Collection
     {
@@ -181,6 +190,7 @@ class DashboardService
                     'slug' => $segment->slug,
                     'total' => $total,
                     'count' => $rows->count(),
+                    'is_rent_side' => (bool) $segment->is_rent_side,
                 ];
             });
     }

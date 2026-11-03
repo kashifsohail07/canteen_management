@@ -6,17 +6,43 @@
 @use('App\Support\Money')
 
 @section('body')
+<table class="summary-card">
+    <tr>
+        <td>
+            <div class="summary-pill">
+                <span class="lbl">Total Sale</span>
+                <span class="val in">{{ Money::format($sales_total) }}</span>
+            </div>
+        </td>
+        <td>
+            <div class="summary-pill">
+                <span class="lbl">Payments</span>
+                <span class="val out">{{ Money::format($paid_total) }}</span>
+            </div>
+        </td>
+        <td>
+            <div class="summary-pill">
+                <span class="lbl">Available Cash</span>
+                <span class="val cash">{{ Money::format($available_cash) }}</span>
+            </div>
+        </td>
+    </tr>
+</table>
+
 @unless ($has_entries)
     <p>No entries recorded for this day.</p>
 @endunless
 
-@if (Money::isPositive($sales_total))
+@if (Money::isPositive($sales_total) || Money::isPositive($rent_side_total))
     <h2>Today's Sales</h2>
     <table class="kv">
-        <tr class="strong"><td>Total sales</td><td class="in">{{ Money::format($sales_total) }}</td></tr>
         @foreach ($segments as $seg)
             <tr><td>&nbsp;&nbsp;· {{ $seg['name'] }} ({{ $seg['count'] }})</td><td>{{ Money::format($seg['total']) }}</td></tr>
         @endforeach
+        <tr class="strong"><td>Total sales</td><td class="in">{{ Money::format($sales_total) }}</td></tr>
+        @if (Money::isPositive($rent_side_total))
+            <tr><td>Rent Side (deducted from sale · {{ $rent_side_count }})</td><td class="out">-{{ Money::format($rent_side_total) }}</td></tr>
+        @endif
     </table>
 @endif
 

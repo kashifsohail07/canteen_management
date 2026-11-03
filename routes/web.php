@@ -102,6 +102,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/reports/vendors', [ReportController::class, 'vendors'])->name('reports.vendors');
     Route::get('/reports/vendor/{vendor}', [ReportController::class, 'vendor'])->name('reports.vendor');
     Route::get('/reports/monthly', [ReportController::class, 'monthly'])->name('reports.monthly');
+    Route::get('/reports/rent-side', [ReportController::class, 'rentSide'])->name('reports.rent-side');
 
     // Private bill photos
     Route::get('/invoices/{purchase}', [InvoiceController::class, 'show'])->name('invoices.show');

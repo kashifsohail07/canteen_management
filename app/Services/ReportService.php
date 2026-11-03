@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Enums\CashAccountCode;
 use App\Models\ActivityLog;
 use App\Models\DailySession;
 use App\Models\Expense;
 use App\Models\OwnerTransaction;
 use App\Models\Purchase;
+use App\Models\RentObligation;
 use App\Models\RentPayment;
 use App\Models\RentReservation;
 use App\Models\Sale;
@@ -124,9 +126,18 @@ class ReportService
         $purchases = $live(Purchase::class)->with(['vendor', 'items'])->orderBy('recorded_at')->orderBy('id')->get();
         $payments = $live(VendorPayment::class)->with('vendor')->orderBy('recorded_at')->orderBy('id')->get();
         $expenses = $live(Expense::class)->with('category')->orderBy('recorded_at')->orderBy('id')->get();
-        $segments = $this->dashboard->segmentTotals($session)
+        // Rent Side is reserve, not bikri — show it as a deduction, never add to sales total.
+        $allSegments = $this->dashboard->segmentTotals($session)
             ->filter(fn (array $row) => Money::isPositive($row['total']))
             ->values();
+
+        $segments = $allSegments
+            ->reject(fn (array $row) => ! empty($row['is_rent_side']))
+            ->values();
+
+        $rentSide = $allSegments->first(fn (array $row) => ! empty($row['is_rent_side']));
+        $rentSideTotal = $rentSide['total'] ?? Money::zero();
+        $rentSideCount = (int) ($rentSide['count'] ?? 0);
 
         $salesTotal = $segments->reduce(
             fn (string $carry, array $row) => Money::add($carry, $row['total']),
@@ -188,17 +199,28 @@ class ReportService
             Money::zero(),
         );
 
+        $paidTotal = $vendorRows->reduce(fn (string $c, array $r) => Money::add($c, $r['paid']), Money::zero());
+        $day = $this->closing->summarize($session);
+        // Closed day with a count → use counted cash; otherwise expected canteen cash for the session.
+        $availableCash = $session->actual_counted_cash !== null
+            ? Money::of($session->actual_counted_cash)
+            : $day['expected_closing_cash'];
+
         return [
             'session' => $session,
             'date' => $session->business_date,
             'sales_total' => $salesTotal,
             'segments' => $segments,
+            'rent_side_total' => $rentSideTotal,
+            'rent_side_count' => $rentSideCount,
             'vendor_rows' => $vendorRows,
             'mall_total' => $vendorRows->reduce(fn (string $c, array $r) => Money::add($c, $r['mall']), Money::zero()),
-            'paid_total' => $vendorRows->reduce(fn (string $c, array $r) => Money::add($c, $r['paid']), Money::zero()),
+            'paid_total' => $paidTotal,
+            'available_cash' => $availableCash,
             'expenses' => $expenses,
             'expense_total' => $expenseTotal,
             'has_entries' => Money::isPositive($salesTotal)
+                || Money::isPositive($rentSideTotal)
                 || $vendorRows->isNotEmpty()
                 || $expenses->isNotEmpty(),
         ];
@@ -351,6 +373,70 @@ class ReportService
             ],
             'segments' => $segments,
             'vendors' => $vendors,
+        ];
+    }
+
+    /**
+     * Month-by-month Rent Side (set-aside) history + averages.
+     * Each calendar month is its own closed tally; live rent_reserve cash is separate.
+     *
+     * @return array<string, mixed>
+     */
+    public function rentSideHistory(): array
+    {
+        // Ensure current month exists and earlier months are soft-closed.
+        $now = now();
+        app(RentService::class)->ensureObligation($now->year, $now->month);
+
+        $obligations = RentObligation::query()
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->get();
+
+        $monthsWithSide = $obligations->filter(
+            fn (RentObligation $o) => Money::isPositive($o->reserved_total)
+        );
+
+        $totalReserved = $monthsWithSide->reduce(
+            fn (string $carry, RentObligation $o) => Money::add($carry, $o->reserved_total),
+            Money::zero(),
+        );
+        $monthCount = $monthsWithSide->count();
+        $averageReserved = $monthCount > 0
+            ? Money::of(bcdiv($totalReserved, (string) $monthCount, 8))
+            : Money::zero();
+
+        $current = $obligations->first(
+            fn (RentObligation $o) => $o->year === $now->year && $o->month === $now->month
+        );
+
+        $rows = $obligations->map(function (RentObligation $o) use ($now) {
+            $isCurrent = $o->year === $now->year && $o->month === $now->month;
+
+            return [
+                'year' => $o->year,
+                'month' => $o->month,
+                'label' => $o->periodLabel(),
+                'ym' => sprintf('%04d-%02d', $o->year, $o->month),
+                'reserved' => Money::of($o->reserved_total),
+                'is_closed' => $o->isClosed() || ! $isCurrent,
+                'is_current' => $isCurrent,
+                'closed_at' => $o->closed_at,
+            ];
+        });
+
+        $balances = $this->cash->getBalances();
+
+        return [
+            'rows' => $rows,
+            'current' => $current,
+            'current_reserved' => Money::of($current?->reserved_total ?? 0),
+            'current_label' => $current?->periodLabel() ?? $now->format('F Y'),
+            'live_reserve' => $balances[CashAccountCode::RentReserve->value],
+            'total_reserved' => $totalReserved,
+            'average_reserved' => $averageReserved,
+            'months_with_side' => $monthCount,
+            'month_count' => $obligations->count(),
         ];
     }
 
