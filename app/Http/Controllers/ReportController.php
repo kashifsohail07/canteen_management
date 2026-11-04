@@ -99,6 +99,20 @@ class ReportController extends Controller
         };
     }
 
+    /** Monthly summary snapshot: qty, payable, cash, rent saving, top purchaser. */
+    public function monthlySummary(Request $request): View
+    {
+        $request->validate(['month' => ['nullable', 'date_format:Y-m']]);
+
+        $month = $request->filled('month')
+            ? Carbon::createFromFormat('Y-m-d', $request->query('month').'-01')
+            : now();
+
+        return view('reports.monthly-summary', $this->reports->monthlySummary($month->year, $month->month) + [
+            'topDate' => $month,
+        ]);
+    }
+
     /** Rent Side set-aside history: per-month totals + average. */
     public function rentSide(Request $request): View
     {

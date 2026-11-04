@@ -17,6 +17,8 @@ use App\Models\Vendor;
 use App\Models\VendorLedgerEntry;
 use App\Models\VendorPayment;
 use App\Support\Money;
+use App\Support\PurchaseActivityCard;
+use App\Support\WorkingDays;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -389,6 +391,79 @@ class ReportService
             'segments' => $segments,
             'vendors' => $vendors,
         ];
+    }
+
+    /**
+     * One-screen monthly snapshot: item qty, vendors payable, cash, rent saving, top purchaser.
+     *
+     * @return array<string, mixed>
+     */
+    public function monthlySummary(int $year, int $month): array
+    {
+        $base = $this->monthly($year, $month);
+        $start = $base['month'];
+        $end = $start->copy()->endOfMonth();
+        $isCurrentMonth = $start->isSameMonth(now());
+
+        $sessionIds = DailySession::whereBetween('business_date', [$start->toDateString(), $end->toDateString()])
+            ->pluck('id');
+
+        $purchases = Purchase::with('items')
+            ->whereIn('daily_session_id', $sessionIds)
+            ->where('is_reversed', false)
+            ->get();
+
+        $itemQty = PurchaseActivityCard::itemQtyTotals($purchases);
+
+        $vendorsPayable = Vendor::query()
+            ->where('is_active', true)
+            ->where('current_balance', '>', 0)
+            ->orderByDesc('current_balance')
+            ->get(['id', 'name', 'current_balance']);
+
+        $vendorsPayableTotal = $vendorsPayable->reduce(
+            fn (string $carry, Vendor $v) => Money::add($carry, $v->current_balance),
+            Money::zero(),
+        );
+
+        $topPurchaser = $base['vendors']
+            ->filter(fn (array $v) => Money::isPositive($v['bills']))
+            ->sortByDesc(fn (array $v) => (float) $v['bills'])
+            ->values()
+            ->first();
+
+        $obligation = RentObligation::where('year', $year)->where('month', $month)->first();
+        $rentSaved = Money::of($obligation?->reserved_total ?? $base['totals']['rent_reserved']);
+
+        // Past month: last recorded day's closing cash; current month: live drawer.
+        $availableCash = $isCurrentMonth
+            ? $this->cash->getBalances()[CashAccountCode::CanteenCash->value]
+            : (
+                $base['rows']->reverse()->first(
+                    fn (array $row) => $row['closing_cash'] !== null && ! WorkingDays::isClosed($row['date'])
+                )['closing_cash'] ?? Money::zero()
+            );
+
+        $liveReserve = $this->cash->getBalances()[CashAccountCode::RentReserve->value];
+        $paidToVendors = Money::add($base['totals']['vendor_payments'], $base['totals']['paid_on_bill']);
+
+        return array_merge($base, [
+            'item_qty' => $itemQty,
+            'item_qty_label' => $itemQty === [] ? null : collect($itemQty)->pluck('display')->implode(' · '),
+            'vendors_payable' => $vendorsPayable->map(fn (Vendor $v) => [
+                'id' => $v->id,
+                'name' => $v->name,
+                'balance' => Money::of($v->current_balance),
+            ])->values(),
+            'vendors_payable_total' => $vendorsPayableTotal,
+            'vendors_payable_count' => $vendorsPayable->count(),
+            'top_purchaser' => $topPurchaser,
+            'rent_saved' => $rentSaved,
+            'available_cash' => Money::of($availableCash),
+            'live_reserve' => $liveReserve,
+            'paid_to_vendors' => $paidToVendors,
+            'is_current_month' => $isCurrentMonth,
+        ]);
     }
 
     /**

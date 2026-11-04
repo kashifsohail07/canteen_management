@@ -65,21 +65,33 @@
     @endif
 </form>
 
-{{-- monthly --}}
+{{-- monthly summary --}}
+<div class="card-x">
+    <div class="card-title"><i class="bi bi-pie-chart-fill"></i> Monthly Summary</div>
+    <div class="field-hint mb-2">One screen: item qty, vendors payable, cash, rent saving, top purchaser.</div>
+    <div class="chip-row mb-3">
+        @foreach ($recentMonths as $m)
+            <a class="chip-link" href="{{ route('reports.monthly-summary', ['month' => $m->format('Y-m')]) }}">{{ $m->format('F Y') }}</a>
+        @endforeach
+    </div>
+    <a href="{{ route('reports.monthly-summary', ['month' => $today->format('Y-m')]) }}" class="btn-xl btn-sm-x btn-blue w-100"><i class="bi bi-eye"></i> View</a>
+</div>
+
+{{-- monthly day-by-day --}}
 <form method="GET" action="{{ route('reports.monthly') }}" class="card-x">
-    <div class="card-title"><i class="bi bi-calendar-month"></i> Monthly Report</div>
-    <div class="field-hint mb-2">September, October… — mahina choose karein. Report mein sale wale din ka total bhi aata hai.</div>
+    <div class="card-title"><i class="bi bi-calendar-month"></i> Monthly Day-by-Day</div>
+    <div class="field-hint mb-2">Full calendar of sales, mall, payments and rent for the month.</div>
     <div class="chip-row mb-3">
         @foreach ($recentMonths as $m)
             <a class="chip-link" href="{{ route('reports.monthly', ['month' => $m->format('Y-m')]) }}">{{ $m->format('F Y') }}</a>
         @endforeach
     </div>
     <div class="field">
-        <label for="month">Mahina</label>
+        <label for="month">Month</label>
         <input type="month" id="month" name="month" class="form-control-x" value="{{ $today->format('Y-m') }}" max="{{ $today->format('Y-m') }}" required>
     </div>
     <div class="d-flex gap-2">
-        <button type="submit" name="format" value="html" class="btn-xl btn-sm-x btn-blue flex-fill"><i class="bi bi-eye"></i> Dekhein</button>
+        <button type="submit" name="format" value="html" class="btn-xl btn-sm-x btn-blue flex-fill"><i class="bi bi-eye"></i> View</button>
         <button type="submit" name="format" value="pdf" class="btn-xl btn-sm-x btn-ghost flex-fill"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
     </div>
 </form>

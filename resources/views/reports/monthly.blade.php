@@ -34,7 +34,8 @@
 </div>
 
 <div class="d-flex gap-2 mb-3 no-print">
-    <a href="{{ route('reports.monthly', $q + ['format' => 'pdf']) }}" class="btn-xl btn-sm-x btn-blue flex-fill"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+    <a href="{{ route('reports.monthly-summary', $q) }}" class="btn-xl btn-sm-x btn-blue flex-fill"><i class="bi bi-pie-chart-fill"></i> Summary</a>
+    <a href="{{ route('reports.monthly', $q + ['format' => 'pdf']) }}" class="btn-xl btn-sm-x btn-ghost flex-fill"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
 </div>
 
 <div class="stat-grid">
