@@ -14,6 +14,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RentController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\RequiredItemController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleSegmentController;
 use App\Http\Controllers\SettingController;
@@ -94,6 +95,14 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Day closing (closing itself is admin-only via policy)
     Route::get('/closing', [ClosingController::class, 'show'])->name('closing.show');
     Route::post('/closing', [ClosingController::class, 'close'])->name('closing.close');
+
+    // Required items (market shopping list)
+    Route::get('/required-items', [RequiredItemController::class, 'index'])->name('required-items.index');
+    Route::get('/required-items/create', [RequiredItemController::class, 'create'])->name('required-items.create');
+    Route::post('/required-items', [RequiredItemController::class, 'store'])->name('required-items.store');
+    Route::get('/required-items/{requiredItem}/fulfill', [RequiredItemController::class, 'fulfillForm'])->name('required-items.fulfill');
+    Route::post('/required-items/{requiredItem}/fulfill', [RequiredItemController::class, 'fulfill'])->name('required-items.fulfill.store');
+    Route::delete('/required-items/{requiredItem}', [RequiredItemController::class, 'destroy'])->name('required-items.destroy');
 
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');

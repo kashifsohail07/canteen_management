@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResolvesBusinessDate;
+use App\Enums\RequiredItemStatus;
 use App\Models\ActivityLog;
 use App\Models\Customer;
+use App\Models\RequiredItem;
 use App\Models\Vendor;
 use App\Services\DailySessionService;
 use App\Services\DashboardService;
@@ -88,6 +90,7 @@ class DashboardController extends Controller
             'topDate' => $date,
             'vendorCount' => Vendor::count(),
             'customerCount' => Customer::count(),
+            'requiredItemsPending' => RequiredItem::where('status', RequiredItemStatus::Pending)->count(),
             'needClosePopup' => $request->boolean('need_close') && ($session?->isOpen() ?? false),
         ]);
     }

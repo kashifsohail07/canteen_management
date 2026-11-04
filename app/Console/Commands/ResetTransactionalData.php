@@ -35,6 +35,7 @@ class ResetTransactionalData extends Command
         'rent_reservations',
         'rent_obligations',
         'expenses',
+        'required_items',
         'activity_logs',
         'audit_logs',
         'idempotency_keys',

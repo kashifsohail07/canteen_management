@@ -76,8 +76,8 @@
             <i class="bi {{ $is('payments.*') ? 'bi-send-fill' : 'bi-send' }}"></i>
             <span>Pay</span>
         </a>
-        <button type="button" class="nav-item {{ $is('vendors.*', 'customers.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*', 'owner.*', 'users.*', 'profile.*') ? 'active' : '' }}" @click="moreOpen = true" aria-haspopup="dialog">
-            <i class="bi {{ $is('vendors.*', 'customers.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*', 'owner.*', 'users.*', 'profile.*') ? 'bi-grid-fill' : 'bi-grid' }}"></i>
+        <button type="button" class="nav-item {{ $is('vendors.*', 'customers.*', 'required-items.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*', 'owner.*', 'users.*', 'profile.*') ? 'active' : '' }}" @click="moreOpen = true" aria-haspopup="dialog">
+            <i class="bi {{ $is('vendors.*', 'customers.*', 'required-items.*', 'rent.*', 'closing.*', 'reports.*', 'settings.*', 'setup.*', 'segments.*', 'owner.*', 'users.*', 'profile.*') ? 'bi-grid-fill' : 'bi-grid' }}"></i>
             <span>More</span>
         </button>
     </nav>
@@ -96,6 +96,7 @@
         <a class="sheet-link" href="{{ route('profile.edit') }}"><i class="bi bi-person-circle"></i>My Profile</a>
         <a class="sheet-link" href="{{ route('vendors.index') }}"><i class="bi bi-people-fill"></i>Vendors</a>
         <a class="sheet-link" href="{{ route('customers.index') }}"><i class="bi bi-person-badge"></i>Customers</a>
+        <a class="sheet-link" href="{{ route('required-items.index') }}"><i class="bi bi-bag-plus-fill"></i>Required Items</a>
         <a class="sheet-link" href="{{ route('owner.index') }}"><i class="bi bi-person-badge-fill"></i>Owner / Pocket</a>
         <a class="sheet-link" href="{{ route('reports.rent-side') }}"><i class="bi bi-calendar3"></i>Rent Side History</a>
         <a class="sheet-link" href="{{ route('rent.pay') }}"><i class="bi bi-house-lock-fill"></i>Rent Pay</a>

@@ -146,6 +146,7 @@
         <a href="{{ route('reports.index') }}"><i class="bi bi-bar-chart"></i> Reports</a>
         <a href="{{ route('vendors.index') }}"><i class="bi bi-people"></i> Vendors</a>
         <a href="{{ route('customers.index') }}"><i class="bi bi-person-badge"></i> Customers</a>
+        <a href="{{ route('required-items.index') }}"><i class="bi bi-bag-plus"></i> Required{{ ($requiredItemsPending ?? 0) > 0 ? ' ('.$requiredItemsPending.')' : '' }}</a>
     </div>
 
     {{-- 4. Overview (secondary) --}}
@@ -164,6 +165,11 @@
             <span class="dash-kicker">Rent side · {{ $summary['month_label'] }}</span>
             <strong data-rent>{{ Money::format($summary['rent']['reserved_total']) }}</strong>
             <small>Last month {{ Money::format($summary['rent']['previous_reserved']) }}</small>
+        </a>
+        <a class="dash-mini dm-required" href="{{ route('required-items.index') }}">
+            <span class="dash-kicker">Required items</span>
+            <strong>{{ $requiredItemsPending ?? 0 }}</strong>
+            <small>{{ ($requiredItemsPending ?? 0) === 1 ? 'item needed' : 'items needed' }}</small>
         </a>
     </div>
 

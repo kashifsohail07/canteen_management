@@ -920,6 +920,10 @@ a {
     color: var(--brand-blue);
 }
 
+.dm-required strong {
+    color: #ea580c;
+}
+
 .tone-green .stat-icon {
     color: var(--brand-green);
     background: var(--brand-green-soft);

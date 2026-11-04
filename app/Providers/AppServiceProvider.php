@@ -4,9 +4,11 @@ namespace App\Providers;
 
 use App\Models\Customer;
 use App\Models\DailySession;
+use App\Models\RequiredItem;
 use App\Models\Vendor;
 use App\Policies\CustomerPolicy;
 use App\Policies\DailySessionPolicy;
+use App\Policies\RequiredItemPolicy;
 use App\Policies\VendorPolicy;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
@@ -34,5 +36,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Vendor::class, VendorPolicy::class);
         Gate::policy(Customer::class, CustomerPolicy::class);
         Gate::policy(DailySession::class, DailySessionPolicy::class);
+        Gate::policy(RequiredItem::class, RequiredItemPolicy::class);
     }
 }
