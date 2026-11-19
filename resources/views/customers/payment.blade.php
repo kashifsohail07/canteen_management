@@ -10,7 +10,7 @@
       x-data="{ submitting: false }"
       @submit="if (submitting) { $event.preventDefault() } else { submitting = true }">
     @csrf
-    @if ($entryDate)<input type="hidden" name="business_date" value="{{ $entryDate }}">@endif
+    <input type="hidden" name="business_date" value="{{ old('business_date', $topDate->toDateString()) }}">
 
     <x-customer-autocomplete :customer="$customer" focus="amount" />
 

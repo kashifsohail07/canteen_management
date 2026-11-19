@@ -13,6 +13,22 @@
     $user = auth()->user();
     $topDate = ($topDate ?? null) ?: now();
     $is = fn (...$patterns) => request()->routeIs(...$patterns);
+
+    // Keep Sale / Bill / Pay / Home on the same business day the user is viewing.
+    $navDate = $entryDate ?? request()->query('date');
+    if ((! is_string($navDate) || $navDate === '')
+        && $topDate instanceof \Illuminate\Support\Carbon
+        && ! $topDate->isToday()
+        && request()->routeIs(
+            'dashboard', 'dashboard.activity', 'sales.*', 'purchases.*', 'payments.*',
+            'closing.*', 'expenses.*', 'rent.*', 'owner.*', 'customers.payment', 'customers.udhaar', 'activity.*'
+        )) {
+        $navDate = $topDate->toDateString();
+    }
+    if (is_string($navDate) && $navDate === now()->toDateString()) {
+        $navDate = null;
+    }
+    $navQ = is_string($navDate) && $navDate !== '' ? ['date' => $navDate] : [];
 @endphp
 
 <div class="app-shell">
@@ -24,7 +40,7 @@
     </div>
 
     <header class="topbar">
-        <a class="brand" href="{{ route('dashboard') }}">
+        <a class="brand" href="{{ route('dashboard', $navQ) }}">
             <span class="brand-logo"><i class="bi bi-wallet2"></i></span>
             <span>Canteen Ledger</span>
         </a>
@@ -60,19 +76,19 @@
     </main>
 
     <nav class="bottom-nav" aria-label="Main">
-        <a href="{{ route('dashboard') }}" class="nav-item {{ $is('dashboard') ? 'active' : '' }}">
+        <a href="{{ route('dashboard', $navQ) }}" class="nav-item {{ $is('dashboard') ? 'active' : '' }}">
             <i class="bi {{ $is('dashboard') ? 'bi-house-door-fill' : 'bi-house-door' }}"></i>
             <span>Home</span>
         </a>
-        <a href="{{ route('sales.create') }}" class="nav-item {{ $is('sales.*') ? 'active' : '' }}">
+        <a href="{{ route('sales.create', $navQ) }}" class="nav-item {{ $is('sales.*') ? 'active' : '' }}">
             <i class="bi {{ $is('sales.*') ? 'bi-cash-stack' : 'bi-cash' }}"></i>
             <span>Sale</span>
         </a>
-        <a href="{{ route('purchases.create') }}" class="nav-item nav-primary {{ $is('purchases.*') ? 'active' : '' }}">
+        <a href="{{ route('purchases.create', $navQ) }}" class="nav-item nav-primary {{ $is('purchases.*') ? 'active' : '' }}">
             <span class="nav-fab"><i class="bi bi-plus-lg"></i></span>
             <span>Bill</span>
         </a>
-        <a href="{{ route('payments.create') }}" class="nav-item {{ $is('payments.*') ? 'active' : '' }}">
+        <a href="{{ route('payments.create', $navQ) }}" class="nav-item {{ $is('payments.*') ? 'active' : '' }}">
             <i class="bi {{ $is('payments.*') ? 'bi-send-fill' : 'bi-send' }}"></i>
             <span>Pay</span>
         </a>
@@ -99,8 +115,8 @@
         <a class="sheet-link" href="{{ route('required-items.index') }}"><i class="bi bi-bag-plus-fill"></i>Required Items</a>
         <a class="sheet-link" href="{{ route('owner.index') }}"><i class="bi bi-person-badge-fill"></i>Owner / Pocket</a>
         <a class="sheet-link" href="{{ route('reports.rent-side') }}"><i class="bi bi-calendar3"></i>Rent Side History</a>
-        <a class="sheet-link" href="{{ route('rent.pay') }}"><i class="bi bi-house-lock-fill"></i>Rent Pay</a>
-        <a class="sheet-link" href="{{ route('closing.show') }}"><i class="bi bi-lock-fill"></i>Din Close</a>
+        <a class="sheet-link" href="{{ route('rent.pay', $navQ) }}"><i class="bi bi-house-lock-fill"></i>Rent Pay</a>
+        <a class="sheet-link" href="{{ route('closing.show', $navQ) }}"><i class="bi bi-lock-fill"></i>Din Close</a>
         <a class="sheet-link" href="{{ route('reports.index') }}"><i class="bi bi-file-earmark-bar-graph-fill"></i>Reports</a>
         @if ($user->isAdmin())
             <a class="sheet-link" href="{{ route('segments.index') }}"><i class="bi bi-ui-checks-grid"></i>Segments</a>

@@ -48,7 +48,7 @@
       ]))"
       @vendor-selected="setVendor($event.detail)"
       @submit="onSubmit($event)">
-    <x-form-meta :date="$entryDate" />
+    <x-form-meta :date="$date->toDateString()" />
     <input type="hidden" name="entry_mode" :value="entryMode">
     <input type="hidden" name="paid_amount" value="0">
 

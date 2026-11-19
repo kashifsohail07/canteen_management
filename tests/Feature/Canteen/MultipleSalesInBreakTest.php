@@ -67,4 +67,55 @@ class MultipleSalesInBreakTest extends TestCase
             'business_date' => now()->addDay()->toDateString(),
         ])->assertSessionHasErrors('business_date');
     }
+
+    public function test_explicit_business_date_sale_does_not_land_on_today(): void
+    {
+        $sessions = app(DailySessionService::class);
+        $yesterday = \App\Support\WorkingDays::previous(now());
+
+        // Yesterday still open; also create a non-empty "today" session artificially
+        // (simulates premature today work while backfilling yesterday).
+        $ySession = $sessions->getOrCreateForDate($yesterday, $this->admin);
+        $tSession = \App\Models\DailySession::create([
+            'business_date' => now()->toDateString(),
+            'day_type' => \App\Enums\DayType::SchoolDay,
+            'status' => \App\Enums\DailySessionStatus::Open,
+            'opening_canteen_cash' => '0',
+            'opening_rent_reserve' => '0',
+            'opening_owner_recoverable' => '0',
+            'created_by' => $this->admin->id,
+        ]);
+        // Mark today as non-empty so null-date routing would prefer today.
+        \App\Models\ActivityLog::create([
+            'daily_session_id' => $tSession->id,
+            'activity_type' => 'note',
+            'title' => 'Premature today',
+            'summary' => 'test',
+            'color' => \App\Enums\ActivityColor::Blue,
+            'recorded_at' => now(),
+            'created_by' => $this->admin->id,
+        ]);
+
+        $this->actingAs($this->staff)->post('/sales', [
+            'sale_segment_id' => $this->segment()->id,
+            'amount' => '750',
+            'business_date' => $yesterday->toDateString(),
+        ])->assertRedirect(route('dashboard', ['date' => $yesterday->toDateString()]));
+
+        $sale = Sale::sole();
+        $this->assertSame($ySession->id, $sale->daily_session_id);
+        $this->assertSame($yesterday->toDateString(), $sale->dailySession->business_date->toDateString());
+    }
+
+    public function test_add_sale_form_for_past_day_includes_business_date(): void
+    {
+        $yesterday = \App\Support\WorkingDays::previous(now());
+        app(DailySessionService::class)->getOrCreateForDate($yesterday, $this->admin);
+
+        $this->actingAs($this->staff)
+            ->get(route('sales.create', ['date' => $yesterday->toDateString()]))
+            ->assertOk()
+            ->assertSee('name="business_date"', false)
+            ->assertSee('value="'.$yesterday->toDateString().'"', false);
+    }
 }

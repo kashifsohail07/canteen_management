@@ -235,7 +235,7 @@
                                       'cashAvailable' => $cashInHand,
                                   ]))"
                                   @submit="onSubmit($event)">
-                                <x-form-meta :date="$entryDate" />
+                                <x-form-meta :date="$date->toDateString()" />
                                 <input type="hidden" name="vendor_id" value="{{ $card['id'] }}">
 
                                 <div class="vendor-pay-title">

@@ -28,6 +28,7 @@ class PurchaseController extends Controller
 
         return view('purchases.create', [
             'vendor' => $vendor,
+            'date' => $date,
             'entryDate' => $this->entryDate($request),
             'topDate' => $date,
         ]);

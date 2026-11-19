@@ -23,7 +23,7 @@
 <form method="POST" action="{{ $action }}"
       x-data="txnForm(@js(['key' => old('idempotency_key'), 'amount' => old('amount', '')]))"
       @submit="onSubmit($event)">
-    <x-form-meta :date="$entryDate" />
+    <x-form-meta :date="$topDate->toDateString()" />
 
     <x-money-input name="amount" label="Amount" x-model="amount" autofocus
                    :hint="$isDeposit ? null : 'Gallay mein available: '.Money::format($cashInHand).' · Zyada se zyada '.Money::format($recoverable).' wapis ho sakta hai.'" />

@@ -54,7 +54,7 @@
 <form method="POST" action="{{ route('rent.reserve') }}" id="reserve-form"
       x-data="txnForm(@js(['key' => old('idempotency_key'), 'amount' => old('amount', $suggest)]))"
       @submit="onSubmit($event)">
-    <x-form-meta :date="$entryDate" />
+    <x-form-meta :date="$topDate->toDateString()" />
 
     <div class="divider-label">Aaj rent side rakhein</div>
 
@@ -82,7 +82,7 @@
 
 <form method="POST" action="{{ route('rent.skip') }}" class="card-x" x-data="{ busy: false }" @submit="if (busy) { $event.preventDefault() } else { busy = true }">
     @csrf
-    @if ($entryDate)<input type="hidden" name="business_date" value="{{ $entryDate }}">@endif
+    <input type="hidden" name="business_date" value="{{ $topDate->toDateString() }}">
     <div class="card-title">Aaj rent nahi rakhna?</div>
     <div class="small text-muted mb-3">Skip karne se koi paisa nahi hilta, sirf activity mein note ho jata hai.</div>
     <input type="text" name="notes" class="form-control-x mb-3" maxlength="500" placeholder="Wajah (optional) — jaise: sale kam thi">

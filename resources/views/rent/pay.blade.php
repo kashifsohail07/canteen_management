@@ -27,7 +27,7 @@
 <form method="POST" action="{{ route('rent.pay.store') }}"
       x-data="txnForm(@js(['key' => old('idempotency_key'), 'amount' => old('amount', bccomp($default, '0', 2) > 0 ? rtrim(rtrim($default, '0'), '.') : ''), 'source' => old('payment_source', 'rent_reserve')]))"
       @submit="onSubmit($event)">
-    <x-form-meta :date="$entryDate" />
+    <x-form-meta :date="$topDate->toDateString()" />
 
     <x-money-input name="amount" label="Rent Amount" x-model="amount" />
     <x-payment-source :options="$sources" label="Rent Kahan Se Diya?" />

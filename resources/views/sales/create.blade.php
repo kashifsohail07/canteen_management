@@ -35,7 +35,7 @@
       x-data="txnForm(@js(['key' => old('idempotency_key'), 'amount' => old('amount', ''), 'segmentId' => $selectedId]))"
       x-init="segmentId = @js($selectedId)"
       @submit="onSubmit($event)">
-    <x-form-meta :date="$entryDate" />
+    <x-form-meta :date="$date->toDateString()" />
 
     <div class="field">
         <span class="field-label">Segment</span>

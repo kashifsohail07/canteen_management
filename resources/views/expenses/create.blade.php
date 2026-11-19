@@ -11,7 +11,7 @@
 <form method="POST" action="{{ route('expenses.store') }}"
       x-data="txnForm(@js(['key' => old('idempotency_key'), 'amount' => old('amount', ''), 'source' => old('payment_source', 'canteen_cash')]))"
       @submit="onSubmit($event)">
-    <x-form-meta :date="$entryDate" />
+    <x-form-meta :date="$topDate->toDateString()" />
 
     <x-money-input name="amount" label="Kharcha Amount" x-model="amount" autofocus />
 

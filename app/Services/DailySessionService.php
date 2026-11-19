@@ -110,14 +110,28 @@ class DailySessionService
     }
 
     /**
-     * Session for new entries. If a previous day is still open, entries stay there —
-     * an empty premature "today" session is ignored until that earlier day is closed.
+     * Session for new entries.
+     *
+     * - Explicit business_date → that day only (never silently switch to another day).
+     * - Null (default / "today" nav) → if a previous day is still open, entries stay there;
+     *   an empty premature "today" session is ignored until that earlier day is closed.
      */
     public function openSessionFor(Carbon|string|null $date, ?User $user = null): DailySession
     {
-        $date = $date === null ? now()->startOfDay() : Carbon::parse($date)->startOfDay();
-        $earlier = $this->latestOpenBefore($date);
+        $explicit = $date !== null && $date !== '';
+        $date = $explicit ? Carbon::parse($date)->startOfDay() : now()->startOfDay();
         $existing = $this->findForDate($date);
+
+        // Back-dated / date-picked entry: honour the chosen day exactly.
+        if ($explicit) {
+            if ($existing) {
+                return $this->ensureOpen($existing);
+            }
+
+            return $this->ensureOpen($this->getOrCreateForDate($date, $user));
+        }
+
+        $earlier = $this->latestOpenBefore($date);
 
         if ($earlier) {
             // Exact date already in progress with real work → keep using it.

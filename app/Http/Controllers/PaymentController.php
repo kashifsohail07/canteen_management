@@ -151,6 +151,7 @@ class PaymentController extends Controller
             'vendor' => $selected,
             'vendorData' => $vendorData,
             'showPay' => $showPay && $selected,
+            'date' => $date,
             'entryDate' => $this->entryDate($request),
             'topDate' => $date,
             'cashInHand' => $cash->getBalances()['canteen_cash'],
